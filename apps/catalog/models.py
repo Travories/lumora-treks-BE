@@ -133,6 +133,20 @@ class PackageGalleryImage(Orderable):
     panels = [FieldPanel("image"), FieldPanel("caption")]
 
 
+class PackageIncludedItem(Orderable):
+    """Normalized inclusions/exclusions for a package."""
+
+    KIND_CHOICES = [("included", "Included"), ("excluded", "Excluded")]
+    package = ParentalKey("catalog.Package", related_name="included_items", on_delete=models.CASCADE)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    text = models.CharField(max_length=255)
+
+    panels = [FieldPanel("kind"), FieldPanel("text")]
+
+    class Meta:
+        ordering = ["kind", "sort_order"]
+
+
 class Package(index.Indexed, SlugMixin, ClusterableModel):
     """
     A travel package. Matches the frontend `TravelPackage` type, plus the
@@ -225,6 +239,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         FieldPanel("destination"),
         InlinePanel("highlights", label="Highlight"),
         InlinePanel("itinerary", label="Itinerary day"),
+        InlinePanel("included_items", label="Included / excluded item"),
         MultiFieldPanel([FieldPanel("includes"), FieldPanel("excludes")], heading="Inclusions"),
         MultiFieldPanel(
             [FieldPanel("is_popular"), FieldPanel("is_active"), FieldPanel("sort_order")],
@@ -247,6 +262,11 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 
     class Meta:
         ordering = ["sort_order", "title"]
+        indexes = [
+            models.Index(fields=["is_active", "is_popular", "sort_order"]),
+            models.Index(fields=["category", "is_active", "sort_order"]),
+            models.Index(fields=["destination", "is_active"]),
+        ]
 
     def __str__(self):
         return self.title
@@ -292,9 +312,41 @@ class Testimonial(index.Indexed, models.Model):
 
     class Meta:
         ordering = ["sort_order", "-id"]
+        indexes = [
+            models.Index(fields=["package", "sort_order"]),
+            models.Index(fields=["package", "rating"]),
+        ]
 
     def __str__(self):
         return f"{self.author_name} — {self.quote[:40]}"
+
+
+class PackageRatingSummary(models.Model):
+    """Denormalized review aggregates for fast package cards and filters."""
+
+    package = models.OneToOneField("catalog.Package", on_delete=models.CASCADE, related_name="rating_summary")
+    total_reviews = models.PositiveIntegerField(default=0)
+    rating_sum = models.PositiveIntegerField(default=0)
+    average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
+    one_star = models.PositiveIntegerField(default=0)
+    two_star = models.PositiveIntegerField(default=0)
+    three_star = models.PositiveIntegerField(default=0)
+    four_star = models.PositiveIntegerField(default=0)
+    five_star = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["average_rating", "total_reviews"])]
+
+    @property
+    def distribution(self):
+        return {
+            "1": self.one_star,
+            "2": self.two_star,
+            "3": self.three_star,
+            "4": self.four_star,
+            "5": self.five_star,
+        }
 
 
 register_snippet(Destination)

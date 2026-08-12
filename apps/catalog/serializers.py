@@ -44,7 +44,9 @@ def serialize_package(package, detail=False):
         "summary": package.summary,
         "image": serialize_image(package.image),
         "rating": float(package.rating),
+        "rating_average": float(package.rating),
         "review_count": package.review_count,
+        "reviews": {"count": package.review_count, "average": float(package.rating)},
         "duration": package.duration,
         "duration_days": package.duration_days,
         "people_count": package.people_count,
@@ -58,6 +60,14 @@ def serialize_package(package, detail=False):
         "booking_url": package.booking_url,
         "href": f"/packages/{package.slug}",
     }
+    summary = getattr(package, "rating_summary", None)
+    if summary is not None:
+        data["review_summary"] = {
+            "total": summary.total_reviews,
+            "sum": summary.rating_sum,
+            "average": float(summary.average_rating),
+            "distribution": summary.distribution,
+        }
     if detail:
         data.update(
             {
@@ -81,6 +91,10 @@ def serialize_package(package, detail=False):
                 ],
                 "includes": package.includes_list,
                 "excludes": package.excludes_list,
+                "included_items": [
+                    {"kind": item.kind, "text": item.text}
+                    for item in package.included_items.all()
+                ],
                 "testimonials": [
                     serialize_testimonial(testimonial) for testimonial in package.testimonials.all()
                 ],

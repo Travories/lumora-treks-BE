@@ -95,7 +95,7 @@ class DictModelViewSet(viewsets.ViewSet):
 
 
 class PackageViewSet(DictModelViewSet):
-    queryset = Package.objects.filter(is_active=True).select_related("image", "destination")
+    queryset = Package.objects.filter(is_active=True).select_related("image", "destination", "rating_summary")
     serialize = staticmethod(serialize_package)
 
     def get_queryset(self):
@@ -105,6 +105,7 @@ class PackageViewSet(DictModelViewSet):
                 "highlights",
                 "itinerary__image",
                 "gallery__image",
+                "included_items",
                 "testimonials__avatar",
             )
         return queryset

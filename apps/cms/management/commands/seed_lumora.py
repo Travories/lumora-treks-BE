@@ -17,7 +17,15 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from wagtail.models import Page, Site
 
-from apps.catalog.models import Destination, Package, Testimonial
+from apps.catalog.models import (
+    Destination,
+    Package,
+    PackageHighlight,
+    PackageIncludedItem,
+    PackageItineraryDay,
+    PackageRatingSummary,
+    Testimonial,
+)
 from apps.cms.models import HomePage
 from apps.core.models import CustomImage
 from apps.navigation.models import (
@@ -50,6 +58,7 @@ class Command(BaseCommand):
         self.create_destinations()
         self.create_packages()
         self.create_testimonials()
+        self.create_package_details()
         home = self.create_home_page()
         self.create_settings()
 
@@ -257,6 +266,102 @@ class Command(BaseCommand):
             },
         )
 
+    def create_package_details(self):
+        """Populate reusable itinerary/highlight/review rows for every package.
+
+        Package.rating and Package.review_count are maintained as denormalized
+        aggregates so catalogue/list requests do not need COUNT/AVG joins.
+        The underlying Testimonial rows remain available for detail pages and
+        future real review submissions.
+        """
+        review_templates = [
+            ("Maya Sharma", "Verified traveller", "A smooth, thoughtful Nepal journey with excellent local guidance.", 5),
+            ("Daniel Carter", "Adventure traveller", "Beautiful routes, clear planning, and memorable experiences from start to finish.", 5),
+        ]
+        itinerary_titles = [
+            "Arrival and local orientation",
+            "Scenic transfer and guided exploration",
+            "Signature experience and free time",
+            "Departure and onward travel",
+        ]
+        for package in Package.objects.all():
+            for order, title in enumerate(itinerary_titles, start=1):
+                day_label = f"Day {order}"
+                day = PackageItineraryDay.objects.filter(package=package, day_label=day_label).first()
+                if day is None:
+                    day = PackageItineraryDay(package=package, day_label=day_label)
+                day.title = f"{title} — {package.title}"
+                day.description = (
+                    "A carefully paced day with local support, practical transfers, and time "
+                    "to experience Nepal beyond the itinerary."
+                )
+                day.sort_order = order
+                day.save()
+
+            for order, text in enumerate(
+                ["Local guide support", "Curated transfers", "Authentic local experiences"], start=1
+            ):
+                highlight = PackageHighlight.objects.filter(package=package, text=text).first()
+                if highlight is None:
+                    highlight = PackageHighlight(package=package, text=text)
+                highlight.sort_order = order
+                highlight.save()
+
+            normalized_items = [
+                ("included", "Airport transfers"),
+                ("included", "Licensed local guide"),
+                ("included", "Accommodation and breakfast"),
+                ("excluded", "International flights"),
+                ("excluded", "Travel insurance"),
+                ("excluded", "Personal expenses"),
+            ]
+            for order, (kind, text) in enumerate(normalized_items, start=1):
+                item, _ = PackageIncludedItem.objects.get_or_create(
+                    package=package, kind=kind, text=text
+                )
+                item.sort_order = order
+                item.save(update_fields=["sort_order"])
+
+            for order, (author, role, quote, rating) in enumerate(review_templates, start=1):
+                review, created = Testimonial.objects.get_or_create(
+                    author_name=author,
+                    package=package,
+                    defaults={
+                        "author_role": role,
+                        "quote": quote,
+                        "rating": rating,
+                        "sort_order": order,
+                    },
+                )
+                if not created:
+                    review.author_role = role
+                    review.quote = quote
+                    review.rating = rating
+                    review.sort_order = order
+                    review.save(update_fields=["author_role", "quote", "rating", "sort_order"])
+
+            reviews = Testimonial.objects.filter(package=package)
+            count = reviews.count()
+            if count:
+                average = sum(review.rating for review in reviews) / count
+                package.review_count = count
+                package.rating = round(average, 1)
+                package.save(update_fields=["review_count", "rating"])
+            else:
+                average = 0
+
+            ratings = [review.rating for review in reviews]
+            summary, _ = PackageRatingSummary.objects.get_or_create(package=package)
+            summary.total_reviews = count
+            summary.rating_sum = sum(ratings)
+            summary.average_rating = round(average, 1)
+            summary.one_star = ratings.count(1)
+            summary.two_star = ratings.count(2)
+            summary.three_star = ratings.count(3)
+            summary.four_star = ratings.count(4)
+            summary.five_star = ratings.count(5)
+            summary.save()
+
     # ------------------------------------------------------------------ page
 
     def create_home_page(self):
@@ -383,7 +488,7 @@ class Command(BaseCommand):
             {
                 "type": "experience_showcase",
                 "value": {
-                    "heading": "Discover the soul of Nepal with major hospitality of Lumora Treks",
+                    "heading": "Discover the soul of Nepal with with major hospitality of Lumora Treks",
                     "description": (
                         "From the snow-capped Himalayas to ancient heritage cities and lush "
                         "wildlife reserves, every destination is carefully selected to offer "
@@ -469,13 +574,10 @@ class Command(BaseCommand):
                 "type": "bento_grid",
                 "value": {
                     "heading": {
-                        "eyebrow": "Curated Travel Experiences",
-                        "heading": "Explore the Heart of Nepal",
-                        "description": (
-                            "From ancient temples to towering peaks, discover the regions that make "
-                            "Nepal an unforgettable destination."
-                        ),
-                        "align": "center",
+                        "eyebrow": "",
+                        "heading": "Explore famous destinations",
+                        "description": "Whether you're seeking mountain adventures, wildlife encounters.",
+                        "align": "left",
                     },
                     "variant": "welcome",
                     "source": "selected",
@@ -491,7 +593,7 @@ class Command(BaseCommand):
                 },
             },
             {
-                "type": "features_list",
+                "type": "authentic_experiences",
                 "value": {
                     "heading": "Discover Nepal Through Authentic Experiences with Us",
                     "description": (
@@ -502,8 +604,8 @@ class Command(BaseCommand):
                     "description_highlight": (
                         "Lumora Treks helps you experience Nepal beyond the ordinary."
                     ),
-                    "image": self.pk("features-decorative"),
-                    "image_position": "left",
+                    "image": self.pk("authentic-nepal"),
+                    "reversed": False,
                     "items": [
                         {
                             "number": "01",
@@ -512,7 +614,6 @@ class Command(BaseCommand):
                                 "Go beyond tourist attractions and immerse yourself in local "
                                 "cultures, traditions, and hidden gems."
                             ),
-                            "icon": "",
                         },
                         {
                             "number": "02",
@@ -521,7 +622,6 @@ class Command(BaseCommand):
                                 "From accommodations to transportation, we handle every detail so "
                                 "you can focus on making memories."
                             ),
-                            "icon": "",
                         },
                         {
                             "number": "03",
@@ -530,25 +630,9 @@ class Command(BaseCommand):
                                 "Enjoy peace of mind with verified travel partners, expert guidance, "
                                 "and dedicated support throughout your journey."
                             ),
-                            "icon": "",
                         },
                     ],
                     "settings": self.settings("features"),
-                },
-            },
-            {
-                "type": "testimonial",
-                "value": {
-                    "background_image": self.pk("testimonial-bg"),
-                    "background_video": None,
-                    "overlay_opacity": 70,
-                    "testimonial": testimonial.pk if testimonial else None,
-                    "quote": "",
-                    "quote_highlights": ["Lumora Treks", "made just for us"],
-                    "author_name": "",
-                    "author_role": "",
-                    "show_quote_icon": True,
-                    "settings": self.settings("testimonial", container="default"),
                 },
             },
             {
@@ -595,43 +679,18 @@ class Command(BaseCommand):
                 },
             },
             {
-                "type": "stats_banner",
+                "type": "cta_banner",
                 "value": {
-                    "background_image": self.pk("stats-bg"),
-                    "background_video": None,
-                    "overlay_opacity": 75,
-                    "heading": "",
-                    "stats": [
-                        {"value": "24%", "label": "Repeated Business", "icon": ""},
-                        {"value": "180K", "label": "Guest satisfied", "icon": ""},
-                        {"value": "10+", "label": "Month of Working", "icon": ""},
-                    ],
-                    "settings": self.settings("stats"),
-                },
-            },
-            {
-                "type": "bento_grid",
-                "value": {
-                    "heading": {
-                        "eyebrow": "Most Visit Destinations in Nepal",
-                        "heading": "Seasonal Special Destinations",
-                        "description": (
-                            "Handpicked getaways that shine brightest depending on the season you "
-                            "choose to travel."
-                        ),
-                        "align": "center",
-                    },
-                    "variant": "seasonal",
-                    "source": "selected",
-                    "items": [
-                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-1"),
-                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-2"),
-                        card("Journey to fish lake", variant="package-card", layout="wide", image_stem="seasonal-3"),
-                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-4"),
-                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-5"),
-                    ],
-                    "limit": 5,
-                    "settings": self.settings("destinations"),
+                    "heading": "Create memories that stay with you long after the Journey Ends",
+                    "text": "",
+                    "background_image": self.pk("cta-bg"),
+                    "buttons": [{
+                        **self.empty_button(),
+                        "label": "Reserve Now",
+                        "link_type": "url",
+                        "url": "/enquiry",
+                    }],
+                    "settings": self.settings("contact", container="full"),
                 },
             },
         ]
