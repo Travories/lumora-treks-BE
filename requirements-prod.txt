@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Production-only extras
+gunicorn>=23.0
