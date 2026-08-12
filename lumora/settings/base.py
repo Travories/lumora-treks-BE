@@ -37,9 +37,18 @@ def env_list(name, default=None):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+# Environment mode: 'production' ('prod') or 'development' ('dev')
+ENVIRONMENT = env("ENVIRONMENT", env("DJANGO_ENV", "development")).lower()
+IS_PRODUCTION = ENVIRONMENT in {"production", "prod", "true", "1"}
+IS_DEVELOPMENT = not IS_PRODUCTION
+
 SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-insecure-change-me")
-DEBUG = env_bool("DJANGO_DEBUG", False)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1", "apilumora.rivetsoft.com"])
+DEBUG = env_bool("DJANGO_DEBUG", default=IS_DEVELOPMENT)
+
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    ["*"] if IS_DEVELOPMENT else ["localhost", "127.0.0.1", "apilumora.rivetsoft.com"]
+)
 
 INSTALLED_APPS = [
     # Lumora apps
@@ -135,7 +144,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -146,10 +155,12 @@ STORAGES = {
 }
 
 # --------------------------------------------------------------------------
-# Cache Configuration (Redis for prod/dev when REDIS_URL is set)
+# Cache Configuration (Redis enabled when ENABLE_REDIS=true or REDIS_URL set)
 # --------------------------------------------------------------------------
 REDIS_URL = env("REDIS_URL", "")
-if REDIS_URL:
+ENABLE_REDIS = env_bool("ENABLE_REDIS", env_bool("USE_REDIS", default=bool(REDIS_URL)))
+
+if ENABLE_REDIS and REDIS_URL:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -169,14 +180,12 @@ else:
     }
 
 # --------------------------------------------------------------------------
-# Object storage for media (images/documents/videos) — S3-compatible bucket
-# (AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, MinIO, …).
-# Applies in dev AND prod whenever AWS_STORAGE_BUCKET_NAME is set, so a
-# developer's local Wagtail admin uploads land in the same bucket as
-# production — no separate "dev storage" to keep in sync.
+# Object storage for media (S3 / Garage enabled when ENABLE_S3=true or bucket set)
 # --------------------------------------------------------------------------
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", "")
-if AWS_STORAGE_BUCKET_NAME:
+ENABLE_S3 = env_bool("ENABLE_S3", env_bool("USE_S3", default=bool(AWS_STORAGE_BUCKET_NAME)))
+
+if ENABLE_S3 and AWS_STORAGE_BUCKET_NAME:
     INSTALLED_APPS += ["storages"]
     AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "")
     AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "")
