@@ -108,6 +108,32 @@ class Command(BaseCommand):
                 },
             )
 
+        # Preserve the complete destination catalogue that existed in the old
+        # frontend.  These are deliberately explicit slugs so repeated seed
+        # runs are idempotent and the old links keep resolving.
+        legacy_destinations = [
+            ("Poon Hills", "poon-hills", "dl-poonhills", "large", "Annapurna", True),
+            ("Chandragiri Hills", "chandragiri-hills", "dl-chandragiri", "small", "Kathmandu", True),
+            ("Kathmandu Valley", "kathmandu-valley", "dl-kathmandu", "large", "Kathmandu", True),
+            ("Swayubhunath", "swayubhunath", "region-swayambhunath", "small", "Kathmandu", True),
+            ("Annapurna Base Camp", "annapurna-base-camp", "dest-annapurna", "small", "Annapurna", True),
+            ("Chitwan", "chitwan", "dest-chitwan", "small", "Chitwan", True),
+        ]
+        for order, (title, slug, image_stem, layout, region, featured) in enumerate(
+            legacy_destinations, start=len(regions)
+        ):
+            Destination.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    "title": title,
+                    "image": self.image(image_stem),
+                    "default_layout": layout,
+                    "is_featured": featured,
+                    "sort_order": order,
+                    "region": region,
+                },
+            )
+
         seasonal = [
             ("Journey to Fish Lake", "seasonal-1", "tall"),
             ("Gosaikunda Trail", "seasonal-2", "tall"),
@@ -119,6 +145,25 @@ class Command(BaseCommand):
             Destination.objects.get_or_create(
                 title=title,
                 defaults={
+                    "image": self.image(image_stem),
+                    "default_layout": layout,
+                    "best_season": "Autumn",
+                    "sort_order": order,
+                },
+            )
+
+        # The old gallery used five cards with the same display title. Keep
+        # each card as its own CMS destination (rather than collapsing them
+        # into one record) so its image and bento layout survive the migration.
+        for order, (image_stem, layout) in enumerate(
+            [("seasonal-1", "tall"), ("seasonal-2", "tall"), ("seasonal-3", "wide"),
+             ("seasonal-4", "tall"), ("seasonal-5", "tall")],
+            start=len(regions) + len(legacy_destinations) + len(seasonal),
+        ):
+            Destination.objects.get_or_create(
+                slug=image_stem,
+                defaults={
+                    "title": "Journey to fish lake",
                     "image": self.image(image_stem),
                     "default_layout": layout,
                     "best_season": "Autumn",
@@ -149,6 +194,51 @@ class Command(BaseCommand):
                     "sort_order": order,
                     "includes": "Airport transfers\nLicensed guide\nAccommodation\nBreakfast",
                     "excludes": "International flights\nTravel insurance\nPersonal expenses",
+                },
+            )
+
+        # Legacy FE catalogue: three popular cards, fifteen filtered cards and
+        # the three cultural-tour cards.  Preserve every card/image as a real
+        # package so the current FE never needs a static fallback.
+        legacy = [
+            ("dhorpatan-region", "Dhorpatan Region", "pkg-dhorpatan", "Trekking", True),
+            ("pokhara-tours", "Pokhara Tours", "pkg-pokhara", "Sightseeing", True),
+            ("ghandruk-annapurna", "Ghandruk and Annapurna region", "pkg-annapurna", "Trekking", True),
+        ]
+        titles = ["Dhorpatan Region", "Pokhara Tours", "Ghandruk and Annapurna region"]
+        for category, prefix, count in (("Trekking", "trek", 8), ("Sightseeing", "sight", 4), ("Paragliding", "para", 3)):
+            for index in range(count):
+                legacy.append((
+                    f"{prefix}-{index + 1}",
+                    titles[index % len(titles)],
+                    f"pkgp-{(index % 6) + 1}",
+                    category,
+                    False,
+                ))
+        legacy.extend([
+            ("cultural-dhorpatan", "Dhorpatan Region", "cultural-1", "Sightseeing", False),
+            ("cultural-pokhara", "Pokhara Tours", "cultural-2", "Sightseeing", False),
+            ("cultural-ghandruk", "Ghandruk and Annapurna region", "pkgp-3", "Sightseeing", False),
+        ])
+        for order, (slug, title, image_stem, category, popular) in enumerate(legacy, start=len(packages)):
+            Package.objects.get_or_create(
+                slug=slug,
+                defaults={
+                    "title": title,
+                    "category": category,
+                    "summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor .",
+                    "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor .",
+                    "image": self.image(image_stem),
+                    "rating": 4.9,
+                    "duration": "4 Days",
+                    "duration_days": 4,
+                    "people_count": 1,
+                    "price": 400,
+                    "currency": "USD",
+                    "is_popular": popular,
+                    "sort_order": order,
+                    "includes": "",
+                    "excludes": "",
                 },
             )
 
@@ -304,12 +394,12 @@ class Command(BaseCommand):
                     ),
                     "show_arrows": True,
                     "small_cards": [
-                        card("Dhorpatan Region"),
-                        card("Patan"),
-                        card("Pokhara"),
+                        card("Dhorpatan Region", image_stem="exp-dhorpatan"),
+                        card("Patan", image_stem="exp-patan"),
+                        card("Pokhara", image_stem="exp-pokhara"),
                     ],
                     "feature_card": card(
-                        "Rara Lake",
+                        "Dhorpatan Region",
                         variant="big-package",
                         layout="large",
                         description=(
@@ -317,7 +407,7 @@ class Command(BaseCommand):
                             "meadows, peaceful villages, and panoramic mountain views create the "
                             "perfect off-the-beaten-path adventure."
                         ),
-                        image_stem="destination-card-default",
+                        image_stem="exp-big",
                     ),
                     "settings": self.settings("experience"),
                 },
@@ -390,12 +480,11 @@ class Command(BaseCommand):
                     "variant": "welcome",
                     "source": "selected",
                     "items": [
-                        card("Annapurna Region", variant="big-package", layout="large"),
-                        card("Bandipur"),
-                        card("Kathmandu"),
-                        card("Swayambhunath"),
-                        card("Rara Lake"),
-                        card("Everest Region"),
+                        card("Dhorpatan Region", image_stem="dest-dhorpatan"),
+                        card("Poon Hills", image_stem="dest-poonhills", variant="big-package", layout="large"),
+                        card("Annapurna Base Camp", image_stem="dest-annapurna"),
+                        card("Chitwan", image_stem="dest-chitwan"),
+                        card("Kathmandu Valley", image_stem="dest-kathmandu"),
                     ],
                     "limit": 6,
                     "settings": self.settings("regions"),
@@ -535,11 +624,11 @@ class Command(BaseCommand):
                     "variant": "seasonal",
                     "source": "selected",
                     "items": [
-                        card("Journey to Fish Lake", variant="package-card", layout="tall"),
-                        card("Gosaikunda Trail", variant="package-card", layout="tall"),
-                        card("Chitwan Safari", variant="package-card", layout="wide"),
-                        card("Mustang Valley", variant="package-card", layout="small"),
-                        card("Langtang Valley", variant="package-card", layout="small"),
+                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-1"),
+                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-2"),
+                        card("Journey to fish lake", variant="package-card", layout="wide", image_stem="seasonal-3"),
+                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-4"),
+                        card("Journey to fish lake", variant="package-card", layout="tall", image_stem="seasonal-5"),
                     ],
                     "limit": 5,
                     "settings": self.settings("destinations"),
@@ -614,8 +703,8 @@ class Command(BaseCommand):
                     "value": {
                         **self.empty_button(),
                         "label": "Reserve Now",
-                        "link_type": "anchor",
-                        "anchor": "contact",
+                        "link_type": "url",
+                        "url": "/enquiry",
                         "style": "secondary",
                         "size": "sm",
                     },
@@ -627,40 +716,28 @@ class Command(BaseCommand):
         footer, created = FooterSettings.objects.get_or_create(pk=1)
         if created or self.reset:
             footer.description = (
-                "Discover expertly crafted itineraries, local experiences, and seamless bookings "
-                "that turn every journey into a story worth telling."
+                "Your trusted travel partner in Nepal. We curate authentic experiences, "
+                "breathtaking destinations, and unforgettable memories."
             )
             footer.columns = [
                 {
                     "type": "column",
                     "value": {
-                        "heading": "Explore",
+                        "heading": "",
                         "links": [
-                            self.link("Home", "url", url="/"),
-                            self.link("Packages", "anchor", anchor="packages"),
-                            self.link("Destinations", "anchor", anchor="destinations"),
-                            self.link("About Us", "url", url="/about"),
-                        ],
-                    },
-                },
-                {
-                    "type": "column",
-                    "value": {
-                        "heading": "Support",
-                        "links": [
-                            self.link("Contact Us", "anchor", anchor="contact"),
-                            self.link("FAQs", "anchor", anchor="faq"),
+                            self.link("Contact Us", "url", url="/contact"),
                             self.link("Privacy Policy", "url", url="/privacy"),
-                            self.link("Terms of Service", "url", url="/terms"),
+                            self.link("Terms & Conditions", "url", url="/terms"),
+                            self.link("Login to Admin Portal", "url", url="/admin"),
                         ],
                     },
                 },
             ]
             footer.socials = [
-                {"type": "social", "value": {"platform": "Facebook", "icon": "mdi:facebook", "url": "https://facebook.com"}},
-                {"type": "social", "value": {"platform": "Instagram", "icon": "mdi:instagram", "url": "https://instagram.com"}},
-                {"type": "social", "value": {"platform": "Twitter", "icon": "mdi:twitter", "url": "https://twitter.com"}},
-                {"type": "social", "value": {"platform": "YouTube", "icon": "mdi:youtube", "url": "https://youtube.com"}},
+                {"type": "social", "value": {"platform": "Facebook", "icon": "mdi:facebook", "url": "#"}},
+                {"type": "social", "value": {"platform": "Instagram", "icon": "mdi:instagram", "url": "#"}},
+                {"type": "social", "value": {"platform": "X", "icon": "prime:twitter", "url": "#"}},
+                {"type": "social", "value": {"platform": "WhatsApp", "icon": "mdi:whatsapp", "url": "#"}},
             ]
             footer.newsletter_enabled = True
             footer.newsletter_heading = "Newsletter"
