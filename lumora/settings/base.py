@@ -146,6 +146,29 @@ STORAGES = {
 }
 
 # --------------------------------------------------------------------------
+# Cache Configuration (Redis for prod/dev when REDIS_URL is set)
+# --------------------------------------------------------------------------
+REDIS_URL = env("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            "KEY_PREFIX": "lumora",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "lumora-locmem",
+        }
+    }
+
+# --------------------------------------------------------------------------
 # Object storage for media (images/documents/videos) — S3-compatible bucket
 # (AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, MinIO, …).
 # Applies in dev AND prod whenever AWS_STORAGE_BUCKET_NAME is set, so a
@@ -160,24 +183,22 @@ if AWS_STORAGE_BUCKET_NAME:
     AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", "")
     AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", "")
-    # Public-read bucket: plain URLs, no expiring signature querystring.
-    # Some S3-compatible providers (e.g. Cloudflare R2) reject ACLs entirely —
-    # set AWS_DEFAULT_ACL= (empty) in .env for those and make the bucket
-    # public via its own policy instead.
-    AWS_DEFAULT_ACL = env("AWS_DEFAULT_ACL", "public-read") or None
-    AWS_QUERYSTRING_AUTH = False
+    AWS_DEFAULT_ACL = env("AWS_DEFAULT_ACL", "") or None
+    # Enable signed URLs with expiration (default True) for secure/private S3 storage
+    AWS_QUERYSTRING_AUTH = env_bool("AWS_QUERYSTRING_AUTH", True)
+    AWS_QUERYSTRING_EXPIRE = int(env("AWS_QUERYSTRING_EXPIRE", "3600"))
     AWS_S3_FILE_OVERWRITE = False
+
     # Self-hosted S3-compatible servers (Garage, MinIO, …) generally need
     # path-style URLs (host/bucket/key) rather than virtual-hosted
     # (bucket.host/key) — override via AWS_S3_ADDRESSING_STYLE=virtual for
     # providers that want the AWS-style default.
     AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", "path")
-    STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
-    MEDIA_URL = (
-        f"https://{AWS_S3_CUSTOM_DOMAIN}/"
-        if AWS_S3_CUSTOM_DOMAIN
-        else f"{AWS_S3_ENDPOINT_URL.rstrip('/')}/{AWS_STORAGE_BUCKET_NAME}/"
-    )
+    STORAGES["default"] = {"BACKEND": "apps.core.storage.CachedS3Storage"}
+    if AWS_S3_CUSTOM_DOMAIN and not AWS_QUERYSTRING_AUTH:
+        MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
+
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

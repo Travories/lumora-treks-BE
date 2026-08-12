@@ -603,10 +603,11 @@ class Command(BaseCommand):
         if created or self.reset:
             nav.items = [
                 {"type": "item", "value": self.nav_item("Home", "url", url="/")},
-                {"type": "item", "value": self.nav_item("Packages", "anchor", anchor="packages")},
-                {"type": "item", "value": self.nav_item("Destinations", "anchor", anchor="destinations")},
-                {"type": "item", "value": self.nav_item("Contact Us", "anchor", anchor="contact")},
+                {"type": "item", "value": self.nav_item("Packages", "url", url="/packages")},
+                {"type": "item", "value": self.nav_item("Destinations", "url", url="/destinations")},
+                {"type": "item", "value": self.nav_item("Contact Us", "url", url="/contact")},
             ]
+
             nav.cta_button = [
                 {
                     "type": "button",
