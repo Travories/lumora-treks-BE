@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from whitenoise.storage import CompressedManifestStaticFilesStorage
 
 try:
