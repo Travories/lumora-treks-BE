@@ -12,8 +12,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/1
     volumes:
-      - staticfiles_data:/app/staticfiles
-      - media_data:/app/media
+      - /var/www/lumora-treks-BE/staticfiles:/app/staticfiles
+      - /var/www/lumora-treks-BE/media:/app/media
     depends_on:
       - redis
 
@@ -29,5 +29,3 @@ services:
 
 volumes:
   redis_data:
-  staticfiles_data:
-  media_data:
