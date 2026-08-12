@@ -12,9 +12,14 @@ Custom REST endpoints that sit next to the Wagtail pages API:
 """
 
 import datetime
+import json
+import logging
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import Http404, JsonResponse
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from rest_framework import status, viewsets
@@ -40,6 +45,8 @@ from apps.navigation.models import (
     NavigationSettings,
     ThemeSettings,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DictModelViewSet(viewsets.ViewSet):
@@ -90,6 +97,17 @@ class PackageViewSet(DictModelViewSet):
     queryset = Package.objects.filter(is_active=True).select_related("image", "destination")
     serialize = staticmethod(serialize_package)
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if getattr(self, "action", None) == "retrieve":
+            return queryset.prefetch_related(
+                "highlights",
+                "itinerary__image",
+                "gallery__image",
+                "testimonials__avatar",
+            )
+        return queryset
+
     def filter_queryset(self, queryset, request):
         params = request.query_params
         if params.get("popular") in {"1", "true", "yes"}:
@@ -113,6 +131,18 @@ class PackageViewSet(DictModelViewSet):
 class DestinationViewSet(DictModelViewSet):
     queryset = Destination.objects.all().select_related("image")
     serialize = staticmethod(serialize_destination)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if getattr(self, "action", None) == "retrieve":
+            return queryset.prefetch_related(
+                Prefetch(
+                    "packages",
+                    queryset=Package.objects.filter(is_active=True).select_related("image", "destination"),
+                    to_attr="active_packages",
+                )
+            )
+        return queryset
 
     def filter_queryset(self, queryset, request):
         params = request.query_params
@@ -254,24 +284,46 @@ class LeadCreateView(APIView):
     throttle_scope = "leads"
 
     KNOWN_FIELDS = {"name", "email", "phone", "message"}
+    MAX_FIELDS = 60
+    MAX_EXTRA_VALUE_LENGTH = 2_000
 
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
+
+        if len(payload) > self.MAX_FIELDS:
+            return Response(
+                {"ok": False, "errors": {"form": "Too many form fields."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Honeypot: a filled hidden field means a bot.
         if payload.get("company_website"):
             return Response({"ok": True}, status=status.HTTP_201_CREATED)
 
         form_key = str(payload.get("form_key") or "enquiry")[:60]
-        data = {
-            key: value
-            for key, value in payload.items()
-            if key not in {"form_key", "company_website", "page_id", "package_id", "source_url"}
+        data = {}
+        excluded_fields = {
+            "form_key", "company_website", "page_id", "package_id", "package_slug", "source_url"
         }
+        for key, value in payload.items():
+            if key in excluded_fields:
+                continue
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, default=str)
+            data[str(key)[:80]] = str(value)[: self.MAX_EXTRA_VALUE_LENGTH]
 
         email = str(payload.get("email") or "").strip()
         name = str(payload.get("name") or payload.get("full_name") or "").strip()
-        if not email and not payload.get("phone"):
+        phone = str(payload.get("phone") or "").strip()
+        if email:
+            try:
+                validate_email(email)
+            except ValidationError:
+                return Response(
+                    {"ok": False, "errors": {"email": "Enter a valid email address."}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        if not email and not phone:
             return Response(
                 {"ok": False, "errors": {"email": "Provide an email address or a phone number."}},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -281,15 +333,18 @@ class LeadCreateView(APIView):
             form_key=form_key,
             name=name[:200],
             email=email[:254],
-            phone=str(payload.get("phone") or "")[:40],
-            message=str(payload.get("message") or ""),
+            phone=phone[:40],
+            message=str(payload.get("message") or "")[:10_000],
             data=data,
             source_url=str(payload.get("source_url") or "")[:200],
         )
         if payload.get("page_id"):
             lead.page = Page.objects.filter(pk=payload["page_id"]).first()
-        if payload.get("package_id"):
-            lead.package = Package.objects.filter(pk=payload["package_id"]).first()
+        package_ref = payload.get("package_id") or payload.get("package_slug")
+        if package_ref:
+            package_ref = str(package_ref)
+            package_query = {"pk": int(package_ref)} if package_ref.isdigit() else {"slug": package_ref}
+            lead.package = Package.objects.filter(**package_query).first()
         lead.save()
 
         self._notify(request, lead)
@@ -305,16 +360,19 @@ class LeadCreateView(APIView):
             return
         from django.core.mail import send_mail
 
-        send_mail(
-            subject=f"[Lumora Treks] New {lead.form_key} submission",
-            message=(
-                f"Name: {lead.name}\nEmail: {lead.email}\nPhone: {lead.phone}\n\n"
-                f"{lead.message}\n\nAll fields: {lead.data}"
-            ),
-            from_email=recipient,
-            recipient_list=[recipient],
-            fail_silently=True,
-        )
+        try:
+            send_mail(
+                subject=f"[Lumora Treks] New {lead.form_key} submission",
+                message=(
+                    f"Name: {lead.name}\nEmail: {lead.email}\nPhone: {lead.phone}\n\n"
+                    f"{lead.message}\n\nAll fields: {lead.data}"
+                ),
+                from_email=recipient,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception("Lead notification failed for submission %s", lead.pk)
 
 
 @never_cache

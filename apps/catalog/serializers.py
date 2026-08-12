@@ -18,14 +18,12 @@ def serialize_destination(destination, detail=False):
         "is_featured": destination.is_featured,
     }
     if detail:
+        packages = getattr(destination, "active_packages", None)
         data.update(
             {
                 "description": destination.description,
                 "best_season": destination.best_season,
-                "packages": [
-                    serialize_package(package)
-                    for package in destination.packages.filter(is_active=True)
-                ],
+                "packages": [serialize_package(package) for package in (packages if packages is not None else destination.packages.filter(is_active=True))],
             }
         )
     return data
