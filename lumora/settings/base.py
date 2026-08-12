@@ -145,6 +145,40 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# --------------------------------------------------------------------------
+# Object storage for media (images/documents/videos) — S3-compatible bucket
+# (AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, MinIO, …).
+# Applies in dev AND prod whenever AWS_STORAGE_BUCKET_NAME is set, so a
+# developer's local Wagtail admin uploads land in the same bucket as
+# production — no separate "dev storage" to keep in sync.
+# --------------------------------------------------------------------------
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", "")
+if AWS_STORAGE_BUCKET_NAME:
+    INSTALLED_APPS += ["storages"]
+    AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", "")
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", "")
+    AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY", "")
+    AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", "")
+    # Public-read bucket: plain URLs, no expiring signature querystring.
+    # Some S3-compatible providers (e.g. Cloudflare R2) reject ACLs entirely —
+    # set AWS_DEFAULT_ACL= (empty) in .env for those and make the bucket
+    # public via its own policy instead.
+    AWS_DEFAULT_ACL = env("AWS_DEFAULT_ACL", "public-read") or None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+    # Self-hosted S3-compatible servers (Garage, MinIO, …) generally need
+    # path-style URLs (host/bucket/key) rather than virtual-hosted
+    # (bucket.host/key) — override via AWS_S3_ADDRESSING_STYLE=virtual for
+    # providers that want the AWS-style default.
+    AWS_S3_ADDRESSING_STYLE = env("AWS_S3_ADDRESSING_STYLE", "path")
+    STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}
+    MEDIA_URL = (
+        f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+        if AWS_S3_CUSTOM_DOMAIN
+        else f"{AWS_S3_ENDPOINT_URL.rstrip('/')}/{AWS_STORAGE_BUCKET_NAME}/"
+    )
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Uploaded video files can be large.

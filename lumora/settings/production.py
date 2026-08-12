@@ -21,6 +21,5 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
-# Media in production: point these at S3/Cloudinary via django-storages if used.
-if env("AWS_STORAGE_BUCKET_NAME"):
-    STORAGES["default"] = {"BACKEND": "storages.backends.s3.S3Storage"}  # noqa: F405
+# Media storage (S3-compatible bucket) is configured in base.py from
+# AWS_STORAGE_BUCKET_NAME — same logic for dev and prod.

@@ -10,11 +10,13 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# Serve uploaded media through Django in development (see lumora/urls.py).
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-}
+# Static files: serve straight from disk in dev (no manifest/hashing).
+# Media (`default`): base.py already points it at the S3-compatible bucket
+# when AWS_STORAGE_BUCKET_NAME is set — falls back to local FileSystemStorage
+# (see lumora/urls.py) only when no bucket is configured.
+STORAGES["staticfiles"] = {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
+if not AWS_STORAGE_BUCKET_NAME:
+    STORAGES["default"] = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 
 try:
     from .local import *  # noqa: F403

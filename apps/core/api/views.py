@@ -94,6 +94,8 @@ class PackageViewSet(DictModelViewSet):
         params = request.query_params
         if params.get("popular") in {"1", "true", "yes"}:
             queryset = queryset.filter(is_popular=True)
+        if params.get("category"):
+            queryset = queryset.filter(category=params["category"])
         if params.get("destination"):
             queryset = queryset.filter(destination__slug=params["destination"])
         if params.get("difficulty"):

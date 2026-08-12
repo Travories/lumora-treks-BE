@@ -143,7 +143,19 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     SOURCE_SDK = "sdk"
     SOURCE_CHOICES = [(SOURCE_CMS, "Authored in the CMS"), (SOURCE_SDK, "Mirrored from the Travories SDK")]
 
+    CATEGORY_CHOICES = [
+        ("Trekking", "Trekking"),
+        ("Sightseeing", "Sightseeing"),
+        ("Paragliding", "Paragliding"),
+    ]
+
     title = models.CharField(max_length=200)
+    category = models.CharField(
+        max_length=40,
+        choices=CATEGORY_CHOICES,
+        default="Trekking",
+        help_text="Drives the /packages page filter tabs.",
+    )
     summary = models.TextField(blank=True, help_text="Short line shown on the card.")
     description = RichTextField(blank=True, features=["h2", "h3", "bold", "italic", "ol", "ul", "link"])
     image = models.ForeignKey(
@@ -191,7 +203,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 
     panels = [
         MultiFieldPanel(
-            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("summary"), FieldPanel("description")],
+            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("category"), FieldPanel("summary"), FieldPanel("description")],
             heading="Content",
         ),
         FieldPanel("image"),
@@ -230,6 +242,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         index.AutocompleteField("title"),
         index.FilterField("is_popular"),
         index.FilterField("is_active"),
+        index.FilterField("category"),
     ]
 
     class Meta:

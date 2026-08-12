@@ -42,6 +42,7 @@ def serialize_package(package, detail=False):
         "id": package.pk,
         "slug": package.slug,
         "title": package.title,
+        "category": package.category,
         "summary": package.summary,
         "image": serialize_image(package.image),
         "rating": float(package.rating),
