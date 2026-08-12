@@ -1,5 +1,17 @@
-from django.core.cache import cache
-from storages.backends.s3 import S3Storage
+from whitenoise.storage import CompressedManifestStaticFilesStorage
+
+try:
+    from storages.backends.s3 import S3Storage
+except ImportError:
+    S3Storage = object
+
+
+class NonStrictCompressedManifestStaticFilesStorage(CompressedManifestStaticFilesStorage):
+    """
+    Extends WhiteNoise's CompressedManifestStaticFilesStorage with manifest_strict = False
+    so missing staticfiles manifest entries do not throw 500 Server Errors.
+    """
+    manifest_strict = False
 
 
 class CachedS3Storage(S3Storage):
