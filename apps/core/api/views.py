@@ -18,6 +18,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.utils import timezone
 from django.http import Http404, JsonResponse
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
@@ -296,6 +297,22 @@ class LeadCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        consent = payload.get("consent") in {True, 1, "1", "true", "yes", "on"}
+        if not consent:
+            return Response(
+                {"ok": False, "errors": {"consent": "Consent is required to submit this form."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        started_at = payload.get("form_started_at")
+        if started_at:
+            try:
+                elapsed = timezone.now().timestamp() - float(started_at)
+                if elapsed < 1.5:
+                    return Response({"ok": True}, status=status.HTTP_201_CREATED)
+            except (TypeError, ValueError):
+                pass
+
         # Honeypot: a filled hidden field means a bot.
         if payload.get("company_website"):
             return Response({"ok": True}, status=status.HTTP_201_CREATED)
@@ -303,7 +320,7 @@ class LeadCreateView(APIView):
         form_key = str(payload.get("form_key") or "enquiry")[:60]
         data = {}
         excluded_fields = {
-            "form_key", "company_website", "page_id", "package_id", "package_slug", "source_url"
+            "form_key", "company_website", "page_id", "package_id", "package_slug", "source_url", "consent", "form_started_at"
         }
         for key, value in payload.items():
             if key in excluded_fields:
@@ -337,6 +354,8 @@ class LeadCreateView(APIView):
             message=str(payload.get("message") or "")[:10_000],
             data=data,
             source_url=str(payload.get("source_url") or "")[:200],
+            consent_given=True,
+            consent_at=timezone.now(),
         )
         if payload.get("page_id"):
             lead.page = Page.objects.filter(pk=payload["page_id"]).first()

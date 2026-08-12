@@ -30,6 +30,8 @@ class LeadSubmission(models.Model):
         "wagtailcore.Page", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     source_url = models.URLField(blank=True)
+    consent_given = models.BooleanField(default=False)
+    consent_at = models.DateTimeField(null=True, blank=True)
     package = models.ForeignKey(
         "catalog.Package", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
