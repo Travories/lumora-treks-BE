@@ -10,10 +10,16 @@ services:
     env_file:
       - .env
     environment:
+      # Run the container with production Django settings so WhiteNoise and
+      # the collected staticfiles manifest are used by Gunicorn.
+      - DJANGO_SETTINGS_MODULE=lumora.settings.production
+      - ENVIRONMENT=production
+      - DJANGO_DEBUG=false
       - REDIS_URL=redis://redis:6379/1
     volumes:
-      - /var/www/lumora-treks-BE/staticfiles:/app/staticfiles
-      - /var/www/lumora-treks-BE/media:/app/media
+      # Host Nginx serves these same directories directly.
+      - /opt/shared/lumora-treks-BE/staticfiles:/app/staticfiles
+      - /opt/shared/lumora-treks-BE/media:/app/media
     depends_on:
       - redis
 
