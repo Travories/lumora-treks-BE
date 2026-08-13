@@ -7,6 +7,7 @@ Packages can be authored fully in the CMS, or mirrored from the company SDK
 frontend caring which is which.
 """
 
+from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
 from modelcluster.fields import ParentalKey
@@ -347,6 +348,42 @@ class PackageRatingSummary(models.Model):
             "4": self.four_star,
             "5": self.five_star,
         }
+
+
+class TravelerReview(models.Model):
+    """One editable traveler review per package and user."""
+
+    package = models.ForeignKey(
+        "catalog.Package",
+        on_delete=models.CASCADE,
+        related_name="traveler_reviews",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="package_reviews",
+    )
+    rating = models.PositiveSmallIntegerField()
+    body = models.TextField(max_length=2_000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("package", "user"),
+                name="catalog_traveler_review_package_user_uniq",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rating__gte=1, rating__lte=5),
+                name="catalog_traveler_review_rating_range",
+            ),
+        ]
+        indexes = [models.Index(fields=["package", "-updated_at"])]
+
+    def __str__(self):
+        return f"{self.package} — {self.user} ({self.rating}/5)"
 
 
 register_snippet(Destination)

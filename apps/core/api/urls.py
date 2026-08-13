@@ -17,6 +17,7 @@ urlpatterns = [
     path("site/", views.SiteSettingsView.as_view(), name="site-settings"),
     path("block-registry/", views.block_registry, name="block-registry"),
     path("leads/", views.LeadCreateView.as_view(), name="lead-create"),
+    path("reviews/", views.PackageReviewView.as_view(), name="package-reviews"),
     path("page-by-path/", views.page_by_path, name="page-by-path"),
     path("", include(router.urls)),
 ]

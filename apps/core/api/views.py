@@ -21,22 +21,25 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils import timezone
 from django.http import Http404, JsonResponse
-from django.db.models import Prefetch
+from django.db import IntegrityError, transaction
+from django.db.models import Case, Count, IntegerField, Prefetch, Q, Sum, Value, When
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from wagtail.models import Page, Site
 
-from apps.catalog.models import Destination, Package, Testimonial
+from apps.catalog.models import Destination, Package, PackageRatingSummary, Testimonial, TravelerReview
 from apps.catalog.serializers import (
+    TravelerReviewWriteSerializer,
     serialize_destination,
     serialize_package,
     serialize_testimonial,
 )
+from apps.core.api.pagination import LumoraPagination
 from apps.cms.blocks import COMPONENT_MAP, SECTION_BLOCKS
 from apps.core.models import Video
 from apps.core.serializers import serialize_image, serialize_video
@@ -172,6 +175,155 @@ class TestimonialViewSet(DictModelViewSet):
         if request.query_params.get("featured") in {"1", "true", "yes"}:
             queryset = queryset.filter(is_featured=True)
         return queryset
+
+
+def _review_author_name(review):
+    profile = getattr(review.user, "traveler_profile", None)
+    return (profile.full_name if profile else "").strip() or review.user.email.split("@")[0]
+
+
+def _serialize_traveler_review(review, request):
+    return {
+        "id": review.pk,
+        "author_name": _review_author_name(review),
+        "rating": review.rating,
+        "body": review.body,
+        "created_at": review.created_at.isoformat(),
+        "updated_at": review.updated_at.isoformat(),
+        "is_mine": bool(request.user.is_authenticated and review.user_id == request.user.pk),
+    }
+
+
+def _package_rating_values(package):
+    traveler = package.traveler_reviews.aggregate(total=Count("id"), total_rating=Sum("rating"))
+    testimonials = package.testimonials.aggregate(total=Count("id"), total_rating=Sum("rating"))
+    total = (traveler["total"] or 0) + (testimonials["total"] or 0)
+    rating_sum = (traveler["total_rating"] or 0) + (testimonials["total_rating"] or 0)
+    distribution = {
+        rating: package.traveler_reviews.filter(rating=rating).count()
+        + package.testimonials.filter(rating=rating).count()
+        for rating in range(1, 6)
+    }
+    return {
+        "total_reviews": total,
+        "rating_sum": rating_sum,
+        "average_rating": round(rating_sum / total, 1) if total else 0,
+        "one_star": distribution[1],
+        "two_star": distribution[2],
+        "three_star": distribution[3],
+        "four_star": distribution[4],
+        "five_star": distribution[5],
+    }
+
+
+def _recalculate_package_rating(package):
+    """Keep package cards and rating breakdowns correct after review changes."""
+
+    values = _package_rating_values(package)
+    PackageRatingSummary.objects.update_or_create(
+        package=package,
+        defaults=values,
+    )
+    package.rating = values["average_rating"]
+    package.review_count = values["total_reviews"]
+    package.save(update_fields=["rating", "review_count"])
+
+
+class PackageReviewView(APIView):
+    """Public review listing plus authenticated one-review-per-user mutations."""
+
+    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.request.method in {"POST", "PATCH", "DELETE"}:
+            return [IsAuthenticated()]
+        return [AllowAny()]
+
+    @staticmethod
+    def get_package(request):
+        package_ref = str(request.query_params.get("package") or "").strip()
+        if not package_ref:
+            return None
+        lookup = {"pk": int(package_ref)} if package_ref.isdigit() else {"slug": package_ref}
+        return Package.objects.filter(is_active=True, **lookup).first()
+
+    def get(self, request):
+        package = self.get_package(request)
+        if package is None:
+            return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        queryset = TravelerReview.objects.filter(package=package).select_related("user", "user__traveler_profile")
+        if request.user.is_authenticated:
+            queryset = queryset.order_by(
+                Case(
+                    When(user=request.user, then=Value(0)),
+                    default=Value(1),
+                    output_field=IntegerField(),
+                ),
+                "-updated_at",
+                "-id",
+            )
+        paginator = LumoraPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        values = _package_rating_values(package)
+        return paginator.get_paginated_response(
+            [_serialize_traveler_review(review, request) for review in page],
+            extra={
+                "summary": {
+                    "total": values["total_reviews"],
+                    "average": float(values["average_rating"]),
+                    "distribution": {
+                        "1": values["one_star"],
+                        "2": values["two_star"],
+                        "3": values["three_star"],
+                        "4": values["four_star"],
+                        "5": values["five_star"],
+                    },
+                }
+            },
+        )
+
+    @transaction.atomic
+    def post(self, request):
+        package = self.get_package(request)
+        if package is None:
+            return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TravelerReviewWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            review = TravelerReview.objects.create(package=package, user=request.user, **serializer.validated_data)
+        except IntegrityError:
+            return Response({"detail": "You already have a review for this package. Update or delete it instead."}, status=status.HTTP_409_CONFLICT)
+        _recalculate_package_rating(package)
+        return Response({"review": _serialize_traveler_review(review, request)}, status=status.HTTP_201_CREATED)
+
+    @transaction.atomic
+    def patch(self, request):
+        package = self.get_package(request)
+        if package is None:
+            return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+        review = TravelerReview.objects.filter(package=package, user=request.user).first()
+        if review is None:
+            return Response({"detail": "Your review was not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TravelerReviewWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        review.rating = serializer.validated_data["rating"]
+        review.body = serializer.validated_data["body"]
+        review.save(update_fields=["rating", "body", "updated_at"])
+        _recalculate_package_rating(package)
+        return Response({"review": _serialize_traveler_review(review, request)})
+
+    @transaction.atomic
+    def delete(self, request):
+        package = self.get_package(request)
+        if package is None:
+            return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
+        review = TravelerReview.objects.filter(package=package, user=request.user).first()
+        if review is None:
+            return Response({"detail": "Your review was not found."}, status=status.HTTP_404_NOT_FOUND)
+        review.delete()
+        _recalculate_package_rating(package)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class VideoViewSet(DictModelViewSet):

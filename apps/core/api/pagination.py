@@ -7,16 +7,17 @@ class LumoraPagination(LimitOffsetPagination):
     default_limit = 20
     max_limit = 200
 
-    def get_paginated_response(self, data):
+    def get_paginated_response(self, data, extra=None):
         from rest_framework.response import Response
 
-        return Response(
-            {
-                "meta": {
-                    "total_count": self.count,
-                    "limit": self.limit,
-                    "offset": self.offset,
-                },
-                "items": data,
-            }
-        )
+        payload = {
+            "meta": {
+                "total_count": self.count,
+                "limit": self.limit,
+                "offset": self.offset,
+            },
+            "items": data,
+        }
+        if extra:
+            payload.update(extra)
+        return Response(payload)

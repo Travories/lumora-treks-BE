@@ -1,6 +1,13 @@
 """Dict serializers for catalog snippets, shared by blocks and REST endpoints."""
 
+from rest_framework import serializers
+
 from apps.core.serializers import serialize_image
+
+
+class TravelerReviewWriteSerializer(serializers.Serializer):
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    body = serializers.CharField(min_length=10, max_length=2_000, trim_whitespace=True)
 
 
 def serialize_destination(destination, detail=False):
