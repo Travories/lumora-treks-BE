@@ -13,16 +13,25 @@ class TravelerReviewWriteSerializer(serializers.Serializer):
 def serialize_destination(destination, detail=False):
     if destination is None:
         return None
+    prefetched_packages = getattr(destination, "starting_packages", None)
+    starting_package = (
+        prefetched_packages[0]
+        if prefetched_packages is not None and prefetched_packages
+        else destination.packages.filter(is_active=True).order_by("price", "pk").first()
+    )
     data = {
         "id": destination.pk,
         "slug": destination.slug,
         "title": destination.title,
         "subtitle": destination.subtitle,
+        "highlights": [line.strip() for line in destination.highlights.splitlines() if line.strip()],
         "image": serialize_image(destination.image),
         "region": destination.region,
         "layout": destination.default_layout,
-        "href": destination.href,
+        "href": destination.href or f"/destinations/{destination.slug}",
         "is_featured": destination.is_featured,
+        "starting_price": float(starting_package.price) if starting_package else None,
+        "currency": starting_package.currency if starting_package else None,
     }
     if detail:
         packages = getattr(destination, "active_packages", None)
@@ -30,6 +39,7 @@ def serialize_destination(destination, detail=False):
             {
                 "description": destination.description,
                 "best_season": destination.best_season,
+                "highlights": [line.strip() for line in destination.highlights.splitlines() if line.strip()],
                 "packages": [serialize_package(package) for package in (packages if packages is not None else destination.packages.filter(is_active=True))],
             }
         )

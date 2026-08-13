@@ -379,7 +379,7 @@ class BentoGridBlock(SectionBlock):
                     **serialize_destination(destination),
                     "variant": "default",
                     "layout": destination.default_layout,
-                    "href": destination.href,
+                    "href": destination.href or f"/destinations/{destination.slug}",
                 }
                 for destination in queryset
             ]

@@ -136,7 +136,13 @@ class PackageViewSet(DictModelViewSet):
 
 
 class DestinationViewSet(DictModelViewSet):
-    queryset = Destination.objects.all().select_related("image")
+    queryset = Destination.objects.all().select_related("image").prefetch_related(
+        Prefetch(
+            "packages",
+            queryset=Package.objects.filter(is_active=True).order_by("price", "pk"),
+            to_attr="starting_packages",
+        )
+    )
     serialize = staticmethod(serialize_destination)
 
     def get_queryset(self):

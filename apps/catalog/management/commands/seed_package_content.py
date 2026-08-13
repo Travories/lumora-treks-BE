@@ -64,6 +64,14 @@ PACKAGES = {
     },
 }
 
+GALLERY_IMAGE_TITLES = {
+    "annapurna-base-camp-trek": ["Annapurna trekking — Suraz03 (CC BY-SA 3.0)", "Dest Annapurna", "Pkg Annapurna", "Region Annapurna", "Hero Bg"],
+    "poon-hill-sunrise-trek": ["Annapurna trekking — Suraz03 (CC BY-SA 3.0)", "Dest Poonhills", "Dl Poonhills", "Region Annapurna", "Seasonal 2"],
+    "journey-to-fish-lake": ["Region Rara Lake", "Seasonal 1", "Seasonal 2", "Authentic Nepal", "Hero"],
+    "pokhara-kathmandu-tours": ["Experience Pokhara", "Exp Pokhara", "Package Card2", "Region Kathmandu", "Dest Kathmandu"],
+    "abc-base-camp-trek": ["Package Card3", "Pkg Annapurna", "Dest Annapurna", "Region Annapurna", "Hero Bg"],
+}
+
 
 class Command(BaseCommand):
     help = "Upsert complete content for Lumora's initial five packages."
@@ -93,13 +101,19 @@ class Command(BaseCommand):
             package = Package.objects.get(slug=slug)
             for field in ("summary", "description", "duration", "duration_days", "price", "difficulty", "people_count"):
                 setattr(package, field, data[field])
-            if media and package.image_id is None:
+            cover_image = CustomImage.objects.filter(title=GALLERY_IMAGE_TITLES[slug][0]).first()
+            if cover_image:
+                package.image = cover_image
+            elif media:
                 package.image = media
             package.save()
-            package.highlights.all().delete(); package.itinerary.all().delete(); package.included_items.all().delete()
+            package.highlights.all().delete(); package.itinerary.all().delete(); package.included_items.all().delete(); package.gallery.all().delete()
             for order, text in enumerate(data["highlights"], 1): PackageHighlight.objects.create(package=package, text=text, sort_order=order)
             for order, (label, title, description) in enumerate(data["itinerary"], 1): PackageItineraryDay.objects.create(package=package, day_label=label, title=title, description=description, sort_order=order)
             for order, text in enumerate(["Licensed local guide", "Teahouse accommodation", "Daily breakfast", "Required permits", "Ground transfers"], 1): PackageIncludedItem.objects.create(package=package, kind="included", text=text, sort_order=order)
             for order, text in enumerate(["International flights", "Travel insurance", "Personal expenses", "Meals not listed"], 1): PackageIncludedItem.objects.create(package=package, kind="excluded", text=text, sort_order=order)
-            if media and not package.gallery.exists(): PackageGalleryImage.objects.create(package=package, image=media, caption="Annapurna region trekking")
+            for order, image_title in enumerate(GALLERY_IMAGE_TITLES[slug], 1):
+                image = CustomImage.objects.filter(title=image_title).first()
+                if image:
+                    PackageGalleryImage.objects.create(package=package, image=image, caption=f"{package.title} — photo {order}", sort_order=order)
             self.stdout.write(f"Updated {package.title}")

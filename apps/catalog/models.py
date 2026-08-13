@@ -53,6 +53,7 @@ class Destination(index.Indexed, SlugMixin, models.Model):
     title = models.CharField(max_length=200)
     subtitle = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
+    highlights = models.TextField(blank=True, help_text="One destination highlight per line.")
     image = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -68,7 +69,7 @@ class Destination(index.Indexed, SlugMixin, models.Model):
 
     panels = [
         MultiFieldPanel(
-            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("subtitle"), FieldPanel("description")],
+            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("subtitle"), FieldPanel("description"), FieldPanel("highlights")],
             heading="Content",
         ),
         FieldPanel("image"),
