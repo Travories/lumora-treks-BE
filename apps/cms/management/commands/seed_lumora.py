@@ -872,7 +872,9 @@ class Command(BaseCommand):
             else:
                 page = StandardPage(title=title, slug=slug)
                 parent.add_child(instance=page)
-            if self.reset or not page.body:
+            # Empty package folders are structural only; never publish a new
+            # revision for them on every seed run.
+            if body and (self.reset or not page.body):
                 page.body = body
                 page.save_revision().publish()
             return page
