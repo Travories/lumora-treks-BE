@@ -31,7 +31,6 @@ class TravelerProfileSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "full_name",
-            "avatar_url",
             "interests",
             "traveler_type",
             "onboarding_complete",

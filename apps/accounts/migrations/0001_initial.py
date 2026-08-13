@@ -89,7 +89,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("full_name", models.CharField(blank=True, max_length=150)),
-                ("avatar_url", models.URLField(blank=True, max_length=500)),
                 ("interests", models.JSONField(blank=True, default=list)),
                 (
                     "traveler_type",

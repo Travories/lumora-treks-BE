@@ -47,7 +47,6 @@ class TravelerProfile(models.Model):
         help_text="Lumora application role; independent of Django CMS permissions.",
     )
     full_name = models.CharField(max_length=150, blank=True)
-    avatar_url = models.URLField(max_length=500, blank=True)
     interests = models.JSONField(default=list, blank=True)
     traveler_type = models.CharField(
         max_length=20,

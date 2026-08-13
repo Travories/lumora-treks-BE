@@ -25,7 +25,6 @@ class AccountApiTests(TestCase):
         "name": "Asha Rai",
         "given_name": "Asha",
         "family_name": "Rai",
-        "picture": "https://example.com/asha.jpg",
         "iss": "https://accounts.google.com",
         "aud": "lumora-test.apps.googleusercontent.com",
     }
@@ -63,7 +62,6 @@ class AccountApiTests(TestCase):
                 "email": "traveler@example.com",
                 "role": "USER",
                 "full_name": "Asha Rai",
-                "avatar_url": "https://example.com/asha.jpg",
                 "interests": [],
                 "traveler_type": "",
                 "onboarding_complete": False,
@@ -91,7 +89,6 @@ class AccountApiTests(TestCase):
             **self.google_claims,
             "email": "new-address@example.com",
             "name": "Google Name",
-            "picture": "https://example.com/new-avatar.jpg",
         }
 
         second_response = self.google_login(updated_claims)
@@ -104,7 +101,6 @@ class AccountApiTests(TestCase):
         identity = SocialIdentity.objects.get()
         self.assertEqual(profile.full_name, "My chosen name")
         self.assertEqual(profile.user.email, "new-address@example.com")
-        self.assertEqual(profile.avatar_url, "https://example.com/new-avatar.jpg")
         self.assertEqual(identity.provider_email, "new-address@example.com")
 
     def test_google_relogin_rotates_expired_token(self):

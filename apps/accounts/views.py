@@ -52,7 +52,7 @@ def _find_google_identity(subject):
     )
 
 
-def _sync_google_identity_profile(identity, email, google_name, avatar_url):
+def _sync_google_identity_profile(identity, email, google_name):
     """Update verified provider metadata without changing application role."""
 
     user = identity.user
@@ -72,7 +72,6 @@ def _sync_google_identity_profile(identity, email, google_name, avatar_url):
         defaults={
             "role": TravelerProfile.ROLE_USER,
             "full_name": google_name,
-            "avatar_url": avatar_url,
         },
     )
 
@@ -80,9 +79,6 @@ def _sync_google_identity_profile(identity, email, google_name, avatar_url):
     if not profile_created and not profile.full_name and google_name:
         profile.full_name = google_name
         profile_updates.append("full_name")
-    if not profile_created and avatar_url and profile.avatar_url != avatar_url:
-        profile.avatar_url = avatar_url
-        profile_updates.append("avatar_url")
     if profile_updates:
         profile.save(update_fields=[*profile_updates, "updated_at"])
     return profile
@@ -94,7 +90,6 @@ def _get_or_create_google_profile(claims):
     subject = str(claims["sub"]).strip()
     email = User.objects.normalize_email(str(claims["email"]).strip()).lower()
     google_name = str(claims.get("name") or "").strip()[:150]
-    avatar_url = str(claims.get("picture") or "").strip()[:500]
 
     identity = _find_google_identity(subject)
     if identity is not None:
@@ -102,7 +97,6 @@ def _get_or_create_google_profile(claims):
             identity,
             email,
             google_name,
-            avatar_url,
         ), False
 
     # Email is provider metadata, not an account-linking key. In particular,
@@ -126,7 +120,6 @@ def _get_or_create_google_profile(claims):
                 user=user,
                 role=TravelerProfile.ROLE_USER,
                 full_name=google_name,
-                avatar_url=avatar_url,
             )
             SocialIdentity.objects.create(
                 user=user,
@@ -149,7 +142,6 @@ def _get_or_create_google_profile(claims):
             identity,
             email,
             google_name,
-            avatar_url,
         ), False
     return profile, True
 
