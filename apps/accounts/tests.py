@@ -1,16 +1,22 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
+from apps.accounts.authentication import token_is_expired
 from apps.accounts.google import GoogleCredentialError
 from apps.accounts.models import SocialIdentity, TravelerProfile
 
 
-@override_settings(GOOGLE_CLIENT_ID="lumora-test.apps.googleusercontent.com")
+@override_settings(
+    GOOGLE_CLIENT_ID="lumora-test.apps.googleusercontent.com",
+    AUTH_TOKEN_TTL_DAYS=30,
+)
 class AccountApiTests(TestCase):
     google_claims = {
         "sub": "google-user-123",
@@ -101,6 +107,22 @@ class AccountApiTests(TestCase):
         self.assertEqual(profile.avatar_url, "https://example.com/new-avatar.jpg")
         self.assertEqual(identity.provider_email, "new-address@example.com")
 
+    def test_google_relogin_rotates_expired_token(self):
+        first_response = self.google_login()
+        old_key = first_response.data["token"]
+        Token.objects.filter(key=old_key).update(
+            created=timezone.now() - timedelta(days=31),
+        )
+
+        second_response = self.google_login()
+
+        self.assertEqual(second_response.status_code, 200)
+        self.assertNotEqual(second_response.data["token"], old_key)
+        self.assertFalse(Token.objects.filter(key=old_key).exists())
+        new_token = Token.objects.get(user__email="traveler@example.com")
+        self.assertEqual(new_token.key, second_response.data["token"])
+        self.assertFalse(token_is_expired(new_token))
+
     def test_google_login_never_links_an_existing_staff_account_by_email(self):
         User = get_user_model()
         staff = User.objects.create_user(
@@ -158,6 +180,38 @@ class AccountApiTests(TestCase):
         verifier.assert_not_called()
         self.assertFalse(get_user_model().objects.exists())
 
+    def test_google_login_recovers_when_provider_identity_race_is_lost(self):
+        winner = get_user_model().objects.create_user(
+            username="race-winner",
+            email="traveler@example.com",
+        )
+        winner.set_unusable_password()
+        winner.save(update_fields=["password"])
+        TravelerProfile.objects.create(
+            user=winner,
+            role=TravelerProfile.ROLE_USER,
+            full_name="Race Winner",
+        )
+        SocialIdentity.objects.create(
+            user=winner,
+            provider=SocialIdentity.PROVIDER_GOOGLE,
+            subject=self.google_claims["sub"],
+            provider_email=self.google_claims["email"],
+        )
+
+        # Force the initial lookup to model a stale concurrent miss. The
+        # speculative insert then hits the real unique constraint, rolls back
+        # to its savepoint, and refetches the winner through the real manager.
+        with patch("apps.accounts.views._find_google_identity", return_value=None):
+            response = self.google_login()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["user"]["id"], winner.pk)
+        self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertEqual(TravelerProfile.objects.count(), 1)
+        self.assertEqual(SocialIdentity.objects.count(), 1)
+        self.assertEqual(Token.objects.get().user, winner)
+
     def test_google_login_rejects_invalid_credential(self):
         with patch(
             "apps.accounts.views.verify_google_credential",
@@ -182,6 +236,19 @@ class AccountApiTests(TestCase):
         self.assertEqual(unauthenticated.status_code, 401)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, {"user": login.data["user"]})
+
+    def test_expired_token_is_deleted_and_rejected_by_me(self):
+        login = self.authenticate()
+        token_key = login.data["token"]
+        Token.objects.filter(key=token_key).update(
+            created=timezone.now() - timedelta(days=31),
+        )
+
+        response = self.client.get(reverse("accounts:me"))
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(str(response.data["detail"]), "Token has expired.")
+        self.assertFalse(Token.objects.filter(key=token_key).exists())
 
     def test_lumora_token_authenticates_profile_without_social_identity(self):
         user = get_user_model().objects.create_user(

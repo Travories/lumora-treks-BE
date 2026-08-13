@@ -25,6 +25,9 @@ Account API responses expose the application role as `USER` or `ADMIN`.
 Google-created accounts are always `USER`. This role is read-only through the
 API and is independent of Django's `is_staff` and `is_superuser` CMS access;
 only trusted database/admin workflows may promote an application account.
+Lumora API tokens are provider-independent and expire server-side after
+`AUTH_TOKEN_TTL_DAYS` (30 days by default); expired tokens are revoked, and a
+successful Google re-login issues a fresh token.
 
 ## Useful commands
 

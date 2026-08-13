@@ -1,13 +1,12 @@
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.authentication import ExpiringTokenAuthentication, get_or_rotate_token
 from apps.accounts.google import (
     GoogleAuthConfigurationError,
     GoogleCredentialError,
@@ -44,6 +43,51 @@ def _available_username(email, identity_hint):
     return candidate
 
 
+def _find_google_identity(subject):
+    return (
+        SocialIdentity.objects.select_for_update()
+        .select_related("user")
+        .filter(provider=SocialIdentity.PROVIDER_GOOGLE, subject=subject)
+        .first()
+    )
+
+
+def _sync_google_identity_profile(identity, email, google_name, avatar_url):
+    """Update verified provider metadata without changing application role."""
+
+    user = identity.user
+    if not user.is_active:
+        raise GoogleCredentialError("This account is disabled.")
+
+    if user.email.lower() != email:
+        user.email = email
+        user.save(update_fields=["email"])
+
+    if identity.provider_email.lower() != email:
+        identity.provider_email = email
+        identity.save(update_fields=["provider_email", "updated_at"])
+
+    profile, profile_created = TravelerProfile.objects.get_or_create(
+        user=user,
+        defaults={
+            "role": TravelerProfile.ROLE_USER,
+            "full_name": google_name,
+            "avatar_url": avatar_url,
+        },
+    )
+
+    profile_updates = []
+    if not profile_created and not profile.full_name and google_name:
+        profile.full_name = google_name
+        profile_updates.append("full_name")
+    if not profile_created and avatar_url and profile.avatar_url != avatar_url:
+        profile.avatar_url = avatar_url
+        profile_updates.append("avatar_url")
+    if profile_updates:
+        profile.save(update_fields=[*profile_updates, "updated_at"])
+    return profile
+
+
 @transaction.atomic
 def _get_or_create_google_profile(claims):
     User = get_user_model()
@@ -52,70 +96,61 @@ def _get_or_create_google_profile(claims):
     google_name = str(claims.get("name") or "").strip()[:150]
     avatar_url = str(claims.get("picture") or "").strip()[:500]
 
-    identity = (
-        SocialIdentity.objects.select_for_update()
-        .select_related("user")
-        .filter(provider=SocialIdentity.PROVIDER_GOOGLE, subject=subject)
-        .first()
-    )
+    identity = _find_google_identity(subject)
     if identity is not None:
-        user = identity.user
-        if not user.is_active:
-            raise GoogleCredentialError("This account is disabled.")
-
-        if user.email.lower() != email:
-            user.email = email
-            user.save(update_fields=["email"])
-
-        if identity.provider_email.lower() != email:
-            identity.provider_email = email
-            identity.save(update_fields=["provider_email", "updated_at"])
-
-        profile, profile_created = TravelerProfile.objects.get_or_create(
-            user=user,
-            defaults={
-                "role": TravelerProfile.ROLE_USER,
-                "full_name": google_name,
-                "avatar_url": avatar_url,
-            },
-        )
-
-        profile_updates = []
-        if not profile_created and not profile.full_name and google_name:
-            profile.full_name = google_name
-            profile_updates.append("full_name")
-        if not profile_created and avatar_url and profile.avatar_url != avatar_url:
-            profile.avatar_url = avatar_url
-            profile_updates.append("avatar_url")
-        if profile_updates:
-            profile.save(update_fields=[*profile_updates, "updated_at"])
-        return profile, False
+        return _sync_google_identity_profile(
+            identity,
+            email,
+            google_name,
+            avatar_url,
+        ), False
 
     # Email is provider metadata, not an account-linking key. In particular,
     # never attach Google to an existing staff or password-backed user merely
     # because the verified email matches. The provider subject is the identity
     # boundary and a new subject gets a new, unprivileged application account.
-    user = User(
-        username=_available_username(email, subject),
-        email=email,
-        first_name=str(claims.get("given_name") or "").strip()[:150],
-        last_name=str(claims.get("family_name") or "").strip()[:150],
-    )
-    user.set_unusable_password()
-    user.save()
+    try:
+        # The savepoint rolls back the speculative user and profile if another
+        # request wins the unique provider/subject race before this insert.
+        with transaction.atomic():
+            user = User(
+                username=_available_username(email, subject),
+                email=email,
+                first_name=str(claims.get("given_name") or "").strip()[:150],
+                last_name=str(claims.get("family_name") or "").strip()[:150],
+            )
+            user.set_unusable_password()
+            user.save()
 
-    profile = TravelerProfile.objects.create(
-        user=user,
-        role=TravelerProfile.ROLE_USER,
-        full_name=google_name,
-        avatar_url=avatar_url,
-    )
-    SocialIdentity.objects.create(
-        user=user,
-        provider=SocialIdentity.PROVIDER_GOOGLE,
-        subject=subject,
-        provider_email=email,
-    )
+            profile = TravelerProfile.objects.create(
+                user=user,
+                role=TravelerProfile.ROLE_USER,
+                full_name=google_name,
+                avatar_url=avatar_url,
+            )
+            SocialIdentity.objects.create(
+                user=user,
+                provider=SocialIdentity.PROVIDER_GOOGLE,
+                subject=subject,
+                provider_email=email,
+            )
+    except IntegrityError:
+        # The inner atomic block has restored this transaction to a usable
+        # state, so refetch the winning identity under the outer transaction.
+        identity = (
+            SocialIdentity.objects.select_for_update()
+            .select_related("user")
+            .filter(provider=SocialIdentity.PROVIDER_GOOGLE, subject=subject)
+            .first()
+        )
+        if identity is None:
+            raise
+        return _sync_google_identity_profile(
+            identity,
+            email,
+            google_name,
+            avatar_url,
+        ), False
     return profile, True
 
 
@@ -136,12 +171,12 @@ class GoogleLoginView(APIView):
         except GoogleCredentialError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
 
-        token, _created = Token.objects.get_or_create(user=profile.user)
+        token = get_or_rotate_token(profile.user)
         return Response({"token": token.key, "user": _profile_payload(profile)})
 
 
 class AuthenticatedProfileView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [ExpiringTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     @staticmethod
@@ -191,9 +226,9 @@ class OnboardingView(AuthenticatedProfileView):
 
 
 class LogoutView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [ExpiringTokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        Token.objects.filter(user=request.user).delete()
+        request.auth.delete()
         return Response({"detail": "Logged out."})

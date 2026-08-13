@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # lumora/settings/base.py -> lumora/settings -> lumora -> <project root>
@@ -35,6 +36,17 @@ def env_list(name, default=None):
     if not value:
         return list(default or [])
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def env_positive_int(name, default):
+    value = env(name, str(default))
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ImproperlyConfigured(f"{name} must be a positive integer.") from exc
+    if parsed <= 0:
+        raise ImproperlyConfigured(f"{name} must be a positive integer.")
+    return parsed
 
 
 # Environment mode: 'production' ('prod') or 'development' ('dev')
@@ -244,7 +256,7 @@ WAGTAILAPI_SEARCH_ENABLED = True
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "apps.accounts.authentication.ExpiringTokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "apps.core.api.pagination.LumoraPagination",
@@ -257,6 +269,7 @@ REST_FRAMEWORK = {
 
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:3000")
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", "")
+AUTH_TOKEN_TTL_DAYS = env_positive_int("AUTH_TOKEN_TTL_DAYS", 30)
 
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
