@@ -20,7 +20,10 @@ from apps.core.serializers import serialize_image
 class BasePage(Page):
     """Shared SEO/social fields and body StreamField for every Lumora page."""
 
-    body = StreamField(SECTION_BLOCKS, blank=True, collapsed=True)
+    # The StreamField is the editable page outline: editors see Hero, Stats,
+    # Package grid, FAQ, CTA, etc. in the same order the frontend renders them.
+    # Keep the field open so the outline is immediately visible in Wagtail.
+    body = StreamField(SECTION_BLOCKS, blank=True, collapsed=False)
 
     og_image = models.ForeignKey(
         "core.CustomImage",
@@ -33,7 +36,7 @@ class BasePage(Page):
     canonical_url = models.URLField(blank=True)
     noindex = models.BooleanField(default=False, help_text="Ask search engines not to index this page.")
 
-    content_panels = Page.content_panels + [FieldPanel("body")]
+    content_panels = Page.content_panels + [FieldPanel("body", heading="Page sections")]
 
     promote_panels = Page.promote_panels + [
         MultiFieldPanel(
@@ -81,7 +84,7 @@ class StandardPage(BasePage):
 
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body")]
+    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
 
     api_fields = BasePage.api_fields + [APIField("intro")]
 
@@ -104,7 +107,7 @@ class PackageIndexPage(BasePage):
         MultiFieldPanel(
             [FieldPanel("packages_per_page"), FieldPanel("show_filters")], heading="Listing options"
         ),
-        FieldPanel("body"),
+        FieldPanel("body", heading="Page sections"),
     ]
 
     api_fields = BasePage.api_fields + [
@@ -122,7 +125,7 @@ class PackageIndexPage(BasePage):
 class BlogIndexPage(BasePage):
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body")]
+    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("intro")]
     subpage_types = ["cms.BlogPostPage"]
 
@@ -148,7 +151,7 @@ class BlogPostPage(BasePage):
             [FieldPanel("published_date"), FieldPanel("author_name"), FieldPanel("read_time_minutes")],
             heading="Meta",
         ),
-        FieldPanel("body"),
+        FieldPanel("body", heading="Page sections"),
     ]
 
     api_fields = BasePage.api_fields + [
