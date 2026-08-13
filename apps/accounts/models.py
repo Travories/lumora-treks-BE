@@ -1,4 +1,4 @@
-"""Profile data collected after a traveler signs in with Google."""
+"""Provider-neutral application profiles and external identities."""
 
 from django.conf import settings
 from django.db import models
@@ -6,6 +6,13 @@ from django.db import models
 
 class TravelerProfile(models.Model):
     """Lumora-specific data attached to Django's built-in user model."""
+
+    ROLE_ADMIN = "ADMIN"
+    ROLE_USER = "USER"
+    ROLE_CHOICES = (
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_USER, "User"),
+    )
 
     INTEREST_CHOICES = (
         ("trekking", "Trekking"),
@@ -33,10 +40,11 @@ class TravelerProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="traveler_profile",
     )
-    google_sub = models.CharField(
-        max_length=255,
-        unique=True,
-        help_text="Stable subject identifier from Google's verified ID token.",
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        default=ROLE_USER,
+        help_text="Lumora application role; independent of Django CMS permissions.",
     )
     full_name = models.CharField(max_length=150, blank=True)
     avatar_url = models.URLField(max_length=500, blank=True)
@@ -75,3 +83,42 @@ class TravelerProfile(models.Model):
     @property
     def onboarding_complete(self):
         return bool(self.onboarding_completed_at and self.has_valid_onboarding_data())
+
+
+class SocialIdentity(models.Model):
+    """A provider-owned identity linked to a Lumora user account."""
+
+    PROVIDER_GOOGLE = "google"
+    PROVIDER_CHOICES = ((PROVIDER_GOOGLE, "Google"),)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="social_identities",
+    )
+    provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES)
+    subject = models.CharField(
+        max_length=255,
+        help_text="Stable user identifier issued by the provider.",
+    )
+    provider_email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["provider", "subject"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("provider", "subject"),
+                name="accounts_social_provider_subject_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("user", "provider"),
+                name="accounts_social_user_provider_uniq",
+            ),
+        ]
+        verbose_name = "social identity"
+        verbose_name_plural = "social identities"
+
+    def __str__(self):
+        return f"{self.provider}:{self.subject}"

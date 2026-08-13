@@ -14,6 +14,60 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
+            name="SocialIdentity",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "provider",
+                    models.CharField(
+                        choices=[("google", "Google")],
+                        max_length=32,
+                    ),
+                ),
+                (
+                    "subject",
+                    models.CharField(
+                        help_text="Stable user identifier issued by the provider.",
+                        max_length=255,
+                    ),
+                ),
+                ("provider_email", models.EmailField(blank=True, max_length=254)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="social_identities",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+            options={
+                "verbose_name": "social identity",
+                "verbose_name_plural": "social identities",
+                "ordering": ["provider", "subject"],
+                "constraints": [
+                    models.UniqueConstraint(
+                        fields=("provider", "subject"),
+                        name="accounts_social_provider_subject_uniq",
+                    ),
+                    models.UniqueConstraint(
+                        fields=("user", "provider"),
+                        name="accounts_social_user_provider_uniq",
+                    ),
+                ],
+            },
+        ),
+        migrations.CreateModel(
             name="TravelerProfile",
             fields=[
                 (
@@ -26,11 +80,12 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "google_sub",
+                    "role",
                     models.CharField(
-                        help_text="Stable subject identifier from Google's verified ID token.",
-                        max_length=255,
-                        unique=True,
+                        choices=[("ADMIN", "Admin"), ("USER", "User")],
+                        default="USER",
+                        help_text="Lumora application role; independent of Django CMS permissions.",
+                        max_length=10,
                     ),
                 ),
                 ("full_name", models.CharField(blank=True, max_length=150)),

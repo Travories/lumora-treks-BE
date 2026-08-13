@@ -3,6 +3,22 @@ from rest_framework import serializers
 from apps.accounts.models import TravelerProfile
 
 
+class RejectUnknownFieldsSerializer(serializers.Serializer):
+    """Reject fields outside an endpoint's explicit writable contract."""
+
+    def to_internal_value(self, data):
+        if hasattr(data, "keys"):
+            unknown_fields = set(data.keys()) - set(self.fields)
+            if unknown_fields:
+                raise serializers.ValidationError(
+                    {
+                        field: ["This field is not accepted by this endpoint."]
+                        for field in sorted(unknown_fields)
+                    }
+                )
+        return super().to_internal_value(data)
+
+
 class TravelerProfileSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source="user_id", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
@@ -13,6 +29,7 @@ class TravelerProfileSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "email",
+            "role",
             "full_name",
             "avatar_url",
             "interests",
@@ -22,11 +39,11 @@ class TravelerProfileSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class GoogleCredentialSerializer(serializers.Serializer):
+class GoogleCredentialSerializer(RejectUnknownFieldsSerializer):
     credential = serializers.CharField(trim_whitespace=True, max_length=4096)
 
 
-class OnboardingSerializer(serializers.Serializer):
+class OnboardingSerializer(RejectUnknownFieldsSerializer):
     full_name = serializers.CharField(
         required=False,
         min_length=2,

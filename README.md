@@ -18,7 +18,13 @@ The default development settings use SQLite only when `DATABASE_URL` is absent. 
 For traveler sign-in, create a Google Web OAuth client and set
 `GOOGLE_CLIENT_ID` to the same client ID used by the frontend's
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Then run `python manage.py migrate` to create
-the traveler profile and API-token tables.
+the application profile, social-identity, and API-token tables. Google subjects
+are stored in `SocialIdentity`; the profile itself is provider-neutral.
+
+Account API responses expose the application role as `USER` or `ADMIN`.
+Google-created accounts are always `USER`. This role is read-only through the
+API and is independent of Django's `is_staff` and `is_superuser` CMS access;
+only trusted database/admin workflows may promote an application account.
 
 ## Useful commands
 

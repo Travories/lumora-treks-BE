@@ -7,7 +7,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.accounts.google import GoogleCredentialError
-from apps.accounts.models import TravelerProfile
+from apps.accounts.models import SocialIdentity, TravelerProfile
 
 
 @override_settings(GOOGLE_CLIENT_ID="lumora-test.apps.googleusercontent.com")
@@ -55,6 +55,7 @@ class AccountApiTests(TestCase):
             {
                 "id": get_user_model().objects.get().pk,
                 "email": "traveler@example.com",
+                "role": "USER",
                 "full_name": "Asha Rai",
                 "avatar_url": "https://example.com/asha.jpg",
                 "interests": [],
@@ -65,7 +66,14 @@ class AccountApiTests(TestCase):
         user = get_user_model().objects.get()
         profile = user.traveler_profile
         self.assertFalse(user.has_usable_password())
-        self.assertEqual(profile.google_sub, "google-user-123")
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertEqual(profile.role, TravelerProfile.ROLE_USER)
+        identity = SocialIdentity.objects.get()
+        self.assertEqual(identity.user, user)
+        self.assertEqual(identity.provider, SocialIdentity.PROVIDER_GOOGLE)
+        self.assertEqual(identity.subject, "google-user-123")
+        self.assertEqual(identity.provider_email, "traveler@example.com")
         self.assertTrue(Token.objects.filter(user=user, key=response.data["token"]).exists())
 
     def test_google_login_reuses_google_subject_and_preserves_onboarding_name(self):
@@ -85,10 +93,13 @@ class AccountApiTests(TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(second_response.data["token"], first_response.data["token"])
         self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertEqual(SocialIdentity.objects.count(), 1)
         profile.refresh_from_db()
+        identity = SocialIdentity.objects.get()
         self.assertEqual(profile.full_name, "My chosen name")
         self.assertEqual(profile.user.email, "new-address@example.com")
         self.assertEqual(profile.avatar_url, "https://example.com/new-avatar.jpg")
+        self.assertEqual(identity.provider_email, "new-address@example.com")
 
     def test_google_login_never_links_an_existing_staff_account_by_email(self):
         User = get_user_model()
@@ -107,6 +118,45 @@ class AccountApiTests(TestCase):
         self.assertFalse(traveler.is_staff)
         self.assertFalse(traveler.has_usable_password())
         self.assertFalse(hasattr(staff, "traveler_profile"))
+        self.assertEqual(SocialIdentity.objects.get().user, traveler)
+
+    def test_google_login_never_links_an_existing_password_user_by_email(self):
+        User = get_user_model()
+        password_user = User.objects.create_user(
+            username="existing-traveler",
+            email="traveler@example.com",
+            password="not-a-real-production-password",
+        )
+        existing_profile = TravelerProfile.objects.create(
+            user=password_user,
+            full_name="Existing Traveler",
+        )
+
+        response = self.google_login()
+
+        self.assertEqual(response.status_code, 200)
+        google_user = User.objects.get(pk=response.data["user"]["id"])
+        self.assertNotEqual(google_user, password_user)
+        self.assertEqual(SocialIdentity.objects.get().user, google_user)
+        self.assertFalse(password_user.social_identities.exists())
+        existing_profile.refresh_from_db()
+        self.assertEqual(existing_profile.role, TravelerProfile.ROLE_USER)
+
+    def test_google_login_request_cannot_choose_application_role(self):
+        with patch("apps.accounts.views.verify_google_credential") as verifier:
+            response = self.client.post(
+                reverse("accounts:google"),
+                {
+                    "credential": "mock-google-credential",
+                    "role": "ADMIN",
+                },
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("role", response.data)
+        verifier.assert_not_called()
+        self.assertFalse(get_user_model().objects.exists())
 
     def test_google_login_rejects_invalid_credential(self):
         with patch(
@@ -132,6 +182,30 @@ class AccountApiTests(TestCase):
         self.assertEqual(unauthenticated.status_code, 401)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, {"user": login.data["user"]})
+
+    def test_lumora_token_authenticates_profile_without_social_identity(self):
+        user = get_user_model().objects.create_user(
+            username="local-admin",
+            email="admin@example.com",
+            password="not-a-real-production-password",
+        )
+        profile = TravelerProfile.objects.create(
+            user=user,
+            role=TravelerProfile.ROLE_ADMIN,
+            full_name="Lumora Admin",
+        )
+        token = Token.objects.create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+        response = self.client.get(reverse("accounts:me"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["user"]["id"], user.pk)
+        self.assertEqual(response.data["user"]["role"], "ADMIN")
+        self.assertEqual(response.data["user"]["full_name"], profile.full_name)
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertFalse(SocialIdentity.objects.exists())
 
     def test_onboarding_only_completes_after_all_valid_fields_are_saved(self):
         self.authenticate()
@@ -186,6 +260,21 @@ class AccountApiTests(TestCase):
         self.assertEqual(profile.interests, [])
         self.assertEqual(profile.traveler_type, "")
         self.assertIsNone(profile.onboarding_completed_at)
+
+    def test_onboarding_cannot_elevate_application_role(self):
+        self.authenticate()
+        profile = TravelerProfile.objects.get()
+
+        response = self.client.patch(
+            reverse("accounts:onboarding"),
+            {"role": "ADMIN"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("role", response.data)
+        profile.refresh_from_db()
+        self.assertEqual(profile.role, TravelerProfile.ROLE_USER)
 
     def test_logout_revokes_token(self):
         login = self.authenticate()
