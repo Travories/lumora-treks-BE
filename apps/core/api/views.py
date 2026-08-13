@@ -8,6 +8,7 @@ Custom REST endpoints that sit next to the Wagtail pages API:
     /api/v2/destinations/    catalog destinations
     /api/v2/testimonials/    catalog testimonials
     /api/v2/leads/           POST an enquiry / newsletter signup
+    /api/v2/auth/            Google sign-in and traveler onboarding
     /api/v2/page-by-path/    full page payload for a frontend route
 """
 
@@ -25,6 +26,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from wagtail.models import Page, Site
@@ -283,6 +285,7 @@ def block_registry(request):
 class LeadCreateView(APIView):
     """POST a form submission. Used by the lead_form block and the newsletter."""
 
+    permission_classes = [AllowAny]
     throttle_scope = "leads"
 
     KNOWN_FIELDS = {"name", "email", "phone", "message"}

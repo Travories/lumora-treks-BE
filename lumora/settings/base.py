@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.cms",
     "apps.navigation",
     "apps.leads",
+    "apps.accounts",
     # Wagtail
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
@@ -75,6 +76,7 @@ INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "rest_framework",
+    "rest_framework.authtoken",
     "corsheaders",
     "django_filters",
     # Django
@@ -241,16 +243,20 @@ WAGTAILAPI_SEARCH_ENABLED = True
 # --------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PAGINATION_CLASS": "apps.core.api.pagination.LumoraPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"leads": "20/hour"},
+    "DEFAULT_THROTTLE_RATES": {"auth": "60/hour", "leads": "20/hour"},
     "UNAUTHENTICATED_USER": None,
 }
 
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:3000")
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", "")
 
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",

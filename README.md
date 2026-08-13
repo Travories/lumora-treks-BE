@@ -15,6 +15,11 @@ python manage.py runserver
 
 The default development settings use SQLite only when `DATABASE_URL` is absent. Use a local PostgreSQL/Redis/S3-compatible setup when testing production behavior.
 
+For traveler sign-in, create a Google Web OAuth client and set
+`GOOGLE_CLIENT_ID` to the same client ID used by the frontend's
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID`. Then run `python manage.py migrate` to create
+the traveler profile and API-token tables.
+
 ## Useful commands
 
 ```bash
@@ -32,5 +37,7 @@ python manage.py seed_lumora
 - `/api/v2/site/` — brand, navigation, footer, theme, integrations
 - `/api/v2/block-registry/` — CMS/frontend component contract
 - `/api/v2/leads/` — enquiry and newsletter submissions
+- `/api/v2/auth/google/` — verify a Google ID token and start a traveler session
+- `/api/v2/auth/me/`, `/api/v2/auth/onboarding/`, `/api/v2/auth/logout/` — traveler profile/session endpoints
 
 Payment/booking endpoints are not implemented yet; the frontend must not claim payment success until a provider and server-side verification flow are added.

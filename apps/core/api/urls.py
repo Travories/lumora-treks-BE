@@ -11,6 +11,7 @@ router.register("testimonials", views.TestimonialViewSet, basename="testimonial"
 router.register("videos", views.VideoViewSet, basename="video")
 
 urlpatterns = [
+    path("auth/", include("apps.accounts.urls")),
     # Wagtail: /api/v2/pages/, /api/v2/images/, /api/v2/documents/
     path("", api_router.urls),
     path("site/", views.SiteSettingsView.as_view(), name="site-settings"),
