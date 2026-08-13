@@ -46,6 +46,7 @@ def serialize_package(package, detail=False):
     data = {
         "id": package.pk,
         "slug": package.slug,
+        "public_code": package.public_code,
         "title": package.title,
         "category": package.category,
         "summary": package.summary,
@@ -65,7 +66,7 @@ def serialize_package(package, detail=False):
         "source": package.source,
         "external_id": package.external_id,
         "booking_url": package.booking_url,
-        "href": f"/packages/{package.slug}",
+        "href": package.public_url,
     }
     summary = getattr(package, "rating_summary", None)
     if summary is not None:

@@ -7,6 +7,9 @@ Packages can be authored fully in the CMS, or mirrored from the company SDK
 frontend caring which is which.
 """
 
+import secrets
+import string
+
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
@@ -165,6 +168,12 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     ]
 
     title = models.CharField(max_length=200)
+    public_code = models.CharField(
+        max_length=5,
+        unique=True,
+        editable=False,
+        help_text="Stable public package reference used in customer-facing URLs.",
+    )
     category = models.CharField(
         max_length=40,
         choices=CATEGORY_CHOICES,
@@ -218,7 +227,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 
     panels = [
         MultiFieldPanel(
-            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("category"), FieldPanel("summary"), FieldPanel("description")],
+            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("public_code", read_only=True), FieldPanel("category"), FieldPanel("summary"), FieldPanel("description")],
             heading="Content",
         ),
         FieldPanel("image"),
@@ -271,6 +280,20 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.public_code:
+            alphabet = string.ascii_lowercase + string.digits
+            while True:
+                candidate = "".join(secrets.choice(alphabet) for _ in range(5))
+                if not type(self).objects.filter(public_code=candidate).exclude(pk=self.pk).exists():
+                    self.public_code = candidate
+                    break
+        super().save(*args, **kwargs)
+
+    @property
+    def public_url(self):
+        return f"/packages/{self.slug}/{self.public_code}"
 
     @property
     def includes_list(self):
