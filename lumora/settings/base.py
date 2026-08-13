@@ -181,6 +181,9 @@ if ENABLE_REDIS and REDIS_URL:
             "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                # CMS page delivery must remain available when Redis is
+                # temporarily unavailable; Django falls back to a cache miss.
+                "IGNORE_EXCEPTIONS": True,
             },
             "KEY_PREFIX": "lumora",
         }

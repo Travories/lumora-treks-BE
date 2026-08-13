@@ -71,7 +71,12 @@ class BasePage(Page):
 class HomePage(BasePage):
     """The site home page. Only one is expected per site."""
 
-    subpage_types = ["cms.StandardPage", "cms.PackageIndexPage", "cms.BlogIndexPage"]
+    subpage_types = [
+        "cms.StandardPage",
+        "cms.PackageIndexPage",
+        "cms.DestinationIndexPage",
+        "cms.BlogIndexPage",
+    ]
     parent_page_types = ["wagtailcore.Page"]
     max_count = 1
 
@@ -90,6 +95,54 @@ class StandardPage(BasePage):
 
     class Meta:
         verbose_name = "Standard page"
+
+
+class DestinationIndexPage(BasePage):
+    """The CMS parent for all destination detail pages."""
+
+    subpage_types = ["cms.DestinationDetailPage"]
+    parent_page_types = ["cms.HomePage"]
+
+    class Meta:
+        verbose_name = "Destination index page"
+
+
+class DestinationDetailPage(BasePage):
+    """One editable, SEO-capable Wagtail page per catalog destination."""
+
+    destination = models.OneToOneField(
+        "catalog.Destination", on_delete=models.PROTECT, related_name="detail_page"
+    )
+    content_panels = Page.content_panels + [FieldPanel("destination"), FieldPanel("body", heading="Page sections")]
+    api_fields = BasePage.api_fields + [APIField("destination_id")]
+    parent_page_types = ["cms.DestinationIndexPage"]
+
+    class Meta:
+        verbose_name = "Destination detail page"
+
+
+class PackageFolderPage(Page):
+    """Structural URL segment: `/packages/<package-slug>/`."""
+
+    parent_page_types = ["cms.PackageIndexPage"]
+    subpage_types = ["cms.PackageDetailPage"]
+
+    class Meta:
+        verbose_name = "Package URL folder"
+
+
+class PackageDetailPage(BasePage):
+    """One editable, SEO-capable Wagtail page per catalog package."""
+
+    package = models.OneToOneField(
+        "catalog.Package", on_delete=models.PROTECT, related_name="detail_page"
+    )
+    content_panels = Page.content_panels + [FieldPanel("package"), FieldPanel("body", heading="Page sections")]
+    api_fields = BasePage.api_fields + [APIField("package_id")]
+    parent_page_types = ["cms.PackageFolderPage"]
+
+    class Meta:
+        verbose_name = "Package detail page"
 
 
 class PackageIndexPage(BasePage):
@@ -116,7 +169,7 @@ class PackageIndexPage(BasePage):
         APIField("show_filters"),
     ]
 
-    subpage_types = ["cms.StandardPage"]
+    subpage_types = ["cms.PackageFolderPage"]
 
     class Meta:
         verbose_name = "Package index page"
