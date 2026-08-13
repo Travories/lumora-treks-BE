@@ -45,12 +45,22 @@ class PackageChooserBlock(SnippetChooserBlock):
         return serialize_package(value)
 
 
+class PackageDetailChooserBlock(PackageChooserBlock):
+    def get_api_representation(self, value, context=None):
+        return serialize_package(value, detail=True)
+
+
 class DestinationChooserBlock(SnippetChooserBlock):
     def __init__(self, **kwargs):
         super().__init__("catalog.Destination", **kwargs)
 
     def get_api_representation(self, value, context=None):
         return serialize_destination(value)
+
+
+class DestinationDetailChooserBlock(DestinationChooserBlock):
+    def get_api_representation(self, value, context=None):
+        return serialize_destination(value, detail=True)
 
 
 class TestimonialChooserBlock(SnippetChooserBlock):
@@ -454,6 +464,31 @@ class DestinationsGridBlock(SectionBlock):
                 for item in Destination.objects.filter(is_featured=True)[: value.get("limit") or 12]
             ]
         return data
+
+
+class DestinationDetailBlock(SectionBlock):
+    """→ `DestinationDetail.tsx`; data is chosen by this page block."""
+
+    component = "DestinationDetail"
+    destination = DestinationDetailChooserBlock()
+
+    class Meta:
+        icon = "site"
+        label = "Destination detail"
+        group = "Page templates"
+
+
+class PackageDetailBlock(SectionBlock):
+    """→ `PackageDetail.tsx`; data is chosen by this page block."""
+
+    component = "PackageDetail"
+    package = PackageDetailChooserBlock()
+    reserve_href = blocks.CharBlock(required=False, max_length=255)
+
+    class Meta:
+        icon = "doc-full"
+        label = "Package detail"
+        group = "Page templates"
 
 
 class FeatureItemBlock(blocks.StructBlock):

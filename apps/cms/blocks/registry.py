@@ -29,6 +29,8 @@ SECTION_BLOCKS = [
     ("authentic_experiences", sections.AuthenticExperiencesBlock()),
     ("bento_grid", sections.BentoGridBlock()),
     ("destinations_grid", sections.DestinationsGridBlock()),
+    ("destination_detail", sections.DestinationDetailBlock()),
+    ("package_detail", sections.PackageDetailBlock()),
     ("features_list", sections.FeaturesListBlock()),
     ("testimonial", sections.TestimonialBlock()),
     ("testimonials_carousel", sections.TestimonialsCarouselBlock()),

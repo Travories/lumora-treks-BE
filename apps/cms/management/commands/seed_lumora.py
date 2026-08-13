@@ -859,6 +859,51 @@ class Command(BaseCommand):
             intro="How Lumora Treks handles your personal information.",
         )
 
+        # Dynamic catalogue URLs are real Wagtail subpages too. Their detail
+        # block owns the selected snippet, so each page can be extended or
+        # rearranged independently in the editor.
+        destinations_index = home.get_children().type(StandardPage).get(slug="destinations").specific
+        packages_index = home.get_children().type(PackageIndexPage).get(slug="packages").specific
+
+        def child(parent, slug, title, body):
+            page = parent.get_children().type(StandardPage).filter(slug=slug).first()
+            if page:
+                page = page.specific
+            else:
+                page = StandardPage(title=title, slug=slug)
+                parent.add_child(instance=page)
+            if self.reset or not page.body:
+                page.body = body
+                page.save_revision().publish()
+            return page
+
+        for destination in Destination.objects.all():
+            detail_page = child(
+                destinations_index,
+                destination.slug,
+                destination.title,
+                [{"type": "destination_detail", "value": {
+                    "destination": destination.pk,
+                    "settings": self.settings("destination-detail"),
+                }}],
+            )
+            if destination.link_page_id != detail_page.pk:
+                destination.link_page = detail_page
+                destination.save(update_fields=["link_page"])
+
+        for package in Package.objects.all():
+            container = child(packages_index, package.slug, package.title, [])
+            child(
+                container,
+                package.public_code,
+                package.title,
+                [{"type": "package_detail", "value": {
+                    "package": package.pk,
+                    "reserve_href": f"/enquiry?package={package.slug}",
+                    "settings": self.settings("package-detail"),
+                }}],
+            )
+
     # ------------------------------------------------------------- helpers
 
     def pk(self, stem):
