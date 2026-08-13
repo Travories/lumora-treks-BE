@@ -779,12 +779,39 @@ class LeadFormBlock(SectionBlock):
     notification_email = blocks.EmailBlock(
         required=False, help_text="Where submissions are emailed. Defaults to the site setting."
     )
-    image = APIImageChooserBlock(required=False)
 
     class Meta:
         icon = "mail"
         label = "Lead form"
         group = "Sections"
+
+
+class PackageEnquiryBlock(SectionBlock):
+    component = "PackageEnquiry"
+    package = PackageDetailChooserBlock(required=False, help_text="Optional default package for this page.")
+
+    class Meta:
+        icon = "mail"
+        label = "Package enquiry"
+        group = "Page templates"
+
+
+class CheckoutBlock(SectionBlock):
+    component = "Checkout"
+
+    class Meta:
+        icon = "credit-card"
+        label = "Checkout"
+        group = "Page templates"
+
+
+class PaymentSuccessBlock(SectionBlock):
+    component = "PaymentSuccess"
+
+    class Meta:
+        icon = "tick"
+        label = "Payment success"
+        group = "Page templates"
 
 
 class SpacerBlock(SectionBlock):

@@ -833,7 +833,6 @@ class Command(BaseCommand):
                         "submit_label": "Send message",
                         "success_message": "Thanks — we'll get back to you within one business day.",
                         "notification_email": "",
-                        "image": None,
                         "settings": self.settings("contact-form"),
                     },
                 },
@@ -858,6 +857,16 @@ class Command(BaseCommand):
             ],
             intro="How Lumora Treks handles your personal information.",
         )
+
+        upsert(StandardPage, "Enquiry", "enquiry", [{"type": "package_enquiry", "value": {"package": None, "settings": self.settings("enquiry")}}])
+        checkout = upsert(StandardPage, "Checkout", "checkout", [{"type": "checkout", "value": {"settings": self.settings("checkout")}}])
+        success = checkout.get_children().type(StandardPage).filter(slug="success").first()
+        if not success:
+            success = StandardPage(title="Payment Success", slug="success")
+            checkout.add_child(instance=success)
+        if self.reset or not success.body:
+            success.body = [{"type": "payment_success", "value": {"settings": self.settings("payment-success")}}]
+            success.save_revision().publish()
 
         # Dynamic catalogue URLs are real Wagtail subpages too. Their detail
         # block owns the selected snippet, so each page can be extended or

@@ -43,6 +43,9 @@ SECTION_BLOCKS = [
     ("video", sections.VideoSectionBlock()),
     ("embed", sections.EmbedSectionBlock()),
     ("lead_form", sections.LeadFormBlock()),
+    ("package_enquiry", sections.PackageEnquiryBlock()),
+    ("checkout", sections.CheckoutBlock()),
+    ("payment_success", sections.PaymentSuccessBlock()),
     ("spacer", sections.SpacerBlock()),
 ]
 
