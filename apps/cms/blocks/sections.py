@@ -200,6 +200,25 @@ class HeaderCardBlock(SectionBlock):
         group = "Sections"
 
 
+class PageHeroBlock(SectionBlock):
+    """→ `src/components/sections/PageHero.tsx` for listing and landing pages."""
+
+    component = "PageHero"
+
+    title = blocks.CharBlock(max_length=200)
+    subtitle = blocks.TextBlock(required=False)
+    image = APIImageChooserBlock()
+    image_alt = blocks.CharBlock(required=False, max_length=200)
+    image_width = blocks.IntegerBlock(default=565, min_value=100, max_value=1600)
+    image_height = blocks.IntegerBlock(default=457, min_value=100, max_value=1600)
+    show_search = blocks.BooleanBlock(required=False, default=True)
+
+    class Meta:
+        icon = "image"
+        label = "Page hero"
+        group = "Sections"
+
+
 class IntroStatsBlock(SectionBlock):
     """→ `src/components/sections/IntroStats.tsx`"""
 
@@ -269,6 +288,23 @@ class PackageGridBlock(PopularPackagesBlock):
     class Meta:
         icon = "grip"
         label = "Package grid"
+        group = "Sections"
+
+
+class PackageListingBlock(SectionBlock):
+    """→ `PopularPackagesGrid.tsx`, the filterable package catalogue."""
+
+    component = "PackageListing"
+
+    heading = blocks.CharBlock(default="Popular Packages", max_length=200)
+    categories = blocks.ListBlock(blocks.CharBlock(max_length=60), required=False, default=[])
+    page_size = blocks.IntegerBlock(default=6, min_value=1, max_value=48)
+    default_category = blocks.CharBlock(required=False, max_length=60)
+    show_filters = blocks.BooleanBlock(required=False, default=True)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Package listing"
         group = "Sections"
 
 
@@ -385,6 +421,38 @@ class BentoGridBlock(SectionBlock):
             ]
         else:
             data["resolved_items"] = data.get("items") or []
+        return data
+
+
+class DestinationsGridBlock(SectionBlock):
+    """→ `DestinationsGrid.tsx`, a carousel backed by page-owned selections."""
+
+    component = "DestinationsGrid"
+
+    heading = blocks.CharBlock(default="Our Destinations", max_length=200)
+    source = blocks.ChoiceBlock(
+        choices=[("featured", "Automatic — featured destinations"), ("selected", "Hand-picked")],
+        default="featured",
+    )
+    destinations = blocks.ListBlock(DestinationChooserBlock(), required=False, default=[])
+    limit = blocks.IntegerBlock(default=12, min_value=1, max_value=48)
+
+    class Meta:
+        icon = "grip"
+        label = "Destinations carousel"
+        group = "Sections"
+
+    def get_api_representation(self, value, context=None):
+        data = super().get_api_representation(value, context)
+        if value.get("source") == "selected":
+            data["resolved_items"] = data.get("destinations") or []
+        else:
+            from apps.catalog.models import Destination
+
+            data["resolved_items"] = [
+                serialize_destination(item)
+                for item in Destination.objects.filter(is_featured=True)[: value.get("limit") or 12]
+            ]
         return data
 
 
@@ -544,6 +612,20 @@ class CTABannerBlock(SectionBlock):
     class Meta:
         icon = "bullhorn"
         label = "CTA banner"
+        group = "Sections"
+
+
+class CulturalToursBlock(PopularPackagesBlock):
+    """→ `CulturalDayTours.tsx`, with content owned by the containing page."""
+
+    component = "CulturalDayTours"
+
+    heading = blocks.CharBlock(default="Cultural & Day Tours", max_length=200)
+    description = blocks.TextBlock(required=False)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Cultural & day tours"
         group = "Sections"
 
 

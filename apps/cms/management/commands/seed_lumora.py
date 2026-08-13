@@ -26,7 +26,7 @@ from apps.catalog.models import (
     PackageRatingSummary,
     Testimonial,
 )
-from apps.cms.models import HomePage
+from apps.cms.models import HomePage, PackageIndexPage, StandardPage
 from apps.core.models import CustomImage
 from apps.navigation.models import (
     BrandSettings,
@@ -60,6 +60,7 @@ class Command(BaseCommand):
         self.create_testimonials()
         self.create_package_details()
         home = self.create_home_page()
+        self.create_editorial_pages(home)
         self.create_settings()
 
         self.stdout.write(self.style.SUCCESS(f"Seeded home page: {home.title} (id={home.pk})"))
@@ -694,6 +695,169 @@ class Command(BaseCommand):
                 },
             },
         ]
+
+    def create_editorial_pages(self, home):
+        """Create the initial public page tree with page-owned StreamField data.
+
+        These blocks are deliberately attached to their *page*, never to a
+        reusable component definition. Editors can therefore reorder, remove,
+        and configure a section without changing any other page.
+        """
+
+        def upsert(page_class, title, slug, body, **fields):
+            page = home.get_children().type(page_class).filter(slug=slug).first()
+            if page:
+                page = page.specific
+            else:
+                page = page_class(title=title, slug=slug, **fields)
+                home.add_child(instance=page)
+            if self.reset or not page.body:
+                page.body = body
+                for field, value in fields.items():
+                    setattr(page, field, value)
+                page.save_revision().publish()
+            return page
+
+        upsert(
+            PackageIndexPage,
+            "Packages",
+            "packages",
+            [
+                {
+                    "type": "page_hero",
+                    "value": {
+                        "title": "Discover your next adventure",
+                        "subtitle": "Choose from carefully crafted journeys across Nepal.",
+                        "image": self.pk("packages-hero"),
+                        "image_alt": "Nepal travel experiences",
+                        "image_width": 565,
+                        "image_height": 457,
+                        "show_search": True,
+                        "settings": self.settings("hero"),
+                    },
+                },
+                {
+                    "type": "package_listing",
+                    "value": {
+                        "heading": "Popular Packages",
+                        "categories": ["Trekking", "Sightseeing", "Paragliding"],
+                        "page_size": 6,
+                        "default_category": "Trekking",
+                        "show_filters": True,
+                        "settings": self.settings("packages"),
+                    },
+                },
+                {
+                    "type": "cultural_tours",
+                    "value": {
+                        "heading": "Cultural & Day Tours",
+                        "description": "Discover Nepal's heritage, food, and local stories.",
+                        "source": "selected",
+                        "packages": list(Package.objects.filter(slug__startswith="cultural-").values_list("pk", flat=True)),
+                        "destination": None,
+                        "sdk_package_ids": [],
+                        "limit": 6,
+                        "autoplay": False,
+                        "show_price": True,
+                        "cta": self.empty_button(),
+                        "settings": self.settings("cultural-tours"),
+                    },
+                },
+            ],
+            intro="Browse trips by style, destination, and travel pace.",
+            packages_per_page=6,
+            show_filters=True,
+        )
+
+        upsert(
+            StandardPage,
+            "Destinations",
+            "destinations",
+            [
+                {
+                    "type": "page_hero",
+                    "value": {
+                        "title": "Explore Nepal's remarkable destinations",
+                        "subtitle": "From high Himalayan trails to living heritage cities.",
+                        "image": self.pk("destinations-hero"),
+                        "image_alt": "Nepal destinations",
+                        "image_width": 565,
+                        "image_height": 457,
+                        "show_search": True,
+                        "settings": self.settings("hero"),
+                    },
+                },
+                {
+                    "type": "destinations_grid",
+                    "value": {
+                        "heading": "Our Destinations",
+                        "source": "featured",
+                        "destinations": [],
+                        "limit": 12,
+                        "settings": self.settings("destinations"),
+                    },
+                },
+            ],
+            intro="Explore the places that make Nepal unforgettable.",
+        )
+
+        upsert(
+            StandardPage,
+            "Contact Us",
+            "contact",
+            [
+                {
+                    "type": "page_hero",
+                    "value": {
+                        "title": "Create memories beyond maps",
+                        "subtitle": "Tell us how you want to travel and our local team will help shape the journey.",
+                        "image": self.pk("packages-hero"),
+                        "image_alt": "Nepal landscapes",
+                        "image_width": 565,
+                        "image_height": 457,
+                        "show_search": False,
+                        "settings": self.settings("contact-hero"),
+                    },
+                },
+                {
+                    "type": "lead_form",
+                    "value": {
+                        "heading": {"eyebrow": "", "heading": "Leave your message", "description": "We reply within one business day.", "align": "left"},
+                        "form_key": "contact",
+                        "fields": [
+                            {"name": "name", "label": "Name", "field_type": "text", "placeholder": "Your name", "required": True, "options": [], "width": "half"},
+                            {"name": "email", "label": "Email address", "field_type": "email", "placeholder": "you@example.com", "required": True, "options": [], "width": "half"},
+                            {"name": "destination", "label": "Destination", "field_type": "text", "placeholder": "Where would you like to go?", "required": False, "options": [], "width": "full"},
+                            {"name": "message", "label": "Message", "field_type": "textarea", "placeholder": "Tell us about your trip", "required": True, "options": [], "width": "full"},
+                        ],
+                        "submit_label": "Send message",
+                        "success_message": "Thanks — we'll get back to you within one business day.",
+                        "notification_email": "",
+                        "image": None,
+                        "settings": self.settings("contact-form"),
+                    },
+                },
+            ],
+            intro="Get in touch with Lumora Treks.",
+        )
+
+        upsert(
+            StandardPage,
+            "Privacy Policy",
+            "privacy",
+            [
+                {
+                    "type": "rich_text",
+                    "value": {
+                        "heading": "Privacy Policy",
+                        "body": "<h2>Information we collect</h2><p>We collect the information you provide when you contact us, request a trip, or make a booking.</p><h2>How we use your information</h2><p>We use it to respond to enquiries, arrange travel, provide support, and meet legal obligations.</p><h2>Your choices</h2><p>You may request access to, correction of, or deletion of your personal information, subject to applicable obligations.</p>",
+                        "width": "narrow",
+                        "settings": self.settings("privacy"),
+                    },
+                }
+            ],
+            intro="How Lumora Treks handles your personal information.",
+        )
 
     # ------------------------------------------------------------- helpers
 
