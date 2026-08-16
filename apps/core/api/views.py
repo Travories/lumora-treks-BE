@@ -189,6 +189,7 @@ def _review_author_name(review):
 
 
 def _serialize_traveler_review(review, request):
+    user = request.user
     return {
         "id": review.pk,
         "author_name": _review_author_name(review),
@@ -196,7 +197,7 @@ def _serialize_traveler_review(review, request):
         "body": review.body,
         "created_at": review.created_at.isoformat(),
         "updated_at": review.updated_at.isoformat(),
-        "is_mine": bool(request.user.is_authenticated and review.user_id == request.user.pk),
+        "is_mine": bool(user and user.is_authenticated and review.user_id == user.pk),
     }
 
 
@@ -259,7 +260,7 @@ class PackageReviewView(APIView):
             return Response({"detail": "Package not found."}, status=status.HTTP_404_NOT_FOUND)
 
         queryset = TravelerReview.objects.filter(package=package).select_related("user", "user__traveler_profile")
-        if request.user.is_authenticated:
+        if request.user and request.user.is_authenticated:
             queryset = queryset.order_by(
                 Case(
                     When(user=request.user, then=Value(0)),

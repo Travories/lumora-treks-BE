@@ -24,6 +24,20 @@ class PackageReviewApiTests(APITestCase):
         response = self.client.post(self.url, {"rating": 5, "body": "A wonderful and memorable trek."}, format="json")
         self.assertEqual(response.status_code, 401)
 
+    def test_guest_can_list_reviews(self):
+        TravelerReview.objects.create(
+            package=self.package,
+            user=self.author,
+            rating=5,
+            body="A wonderful and memorable trek.",
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["items"][0]["author_name"], "Asha Rai")
+        self.assertFalse(response.data["items"][0]["is_mine"])
+
     def test_user_can_create_update_delete_then_create_review_again(self):
         self.authenticate(self.author)
         created = self.client.post(self.url, {"rating": 5, "body": "A wonderful and memorable trek."}, format="json")
