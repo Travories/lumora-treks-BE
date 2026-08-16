@@ -15,23 +15,7 @@ services:
       - DJANGO_SETTINGS_MODULE=lumora.settings.production
       - ENVIRONMENT=production
       - DJANGO_DEBUG=false
-      - REDIS_URL=redis://redis:6379/1
     volumes:
       # Host Nginx serves these same directories directly.
       - /opt/shared/lumora-treks-BE/staticfiles:/app/staticfiles
       - /opt/shared/lumora-treks-BE/media:/app/media
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    container_name: lumora_redis
-    restart: always
-    ports:
-      - "8385:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --save 60 1 --loglevel notice
-
-volumes:
-  redis_data:
