@@ -210,6 +210,74 @@ class HeaderCardBlock(SectionBlock):
         group = "Sections"
 
 
+class SocialLinkBlock(blocks.StructBlock):
+    """One social icon + link, used by `ContactFormBlock.socials`."""
+
+    icon = IconBlock(help_text="Iconify glyph, e.g. mdi:facebook")
+    label = blocks.CharBlock(max_length=40)
+    url = blocks.URLBlock(required=False)
+
+    class Meta:
+        icon = "link"
+
+
+class ContactHeroBlock(SectionBlock):
+    """→ `src/components/sections/ContactHero.tsx` — editorial hero for /contact (Figma 75:646)."""
+
+    component = "ContactHero"
+
+    heading = blocks.CharBlock(max_length=100, default="Create Memories")
+    subtitle = blocks.CharBlock(
+        max_length=300,
+        default="Mountains, forests, heritage sites, and hidden gems are just the beginning of your next adventure.",
+    )
+    subtitle_highlight = blocks.CharBlock(
+        required=False, max_length=200, default="just the beginning of your next adventure."
+    )
+    tagline = blocks.CharBlock(max_length=200, default="Travel is more than a destination.")
+    tagline_highlight = blocks.CharBlock(required=False, max_length=50, default="Travel")
+    closing_heading = blocks.CharBlock(max_length=100, default="beyond maps")
+    closing_text = blocks.CharBlock(
+        max_length=300,
+        default="We design meaningful travel experiences that connect you with nature, culture, and unforgettable journey at a time.",
+    )
+    closing_text_highlight = blocks.CharBlock(
+        required=False, max_length=200, default="and unforgettable journey at a time."
+    )
+    image = APIImageChooserBlock()
+
+    class Meta:
+        icon = "image"
+        label = "Contact hero"
+        group = "Sections"
+
+
+class ContactFormBlock(SectionBlock):
+    """→ `src/components/sections/ContactForm.tsx` (Figma 75:690) — posts to
+    `/api/v2/leads/` with `form_key="contact"`."""
+
+    component = "ContactForm"
+
+    heading = blocks.CharBlock(max_length=200, default="Don't Hesitate to Contact Us")
+    heading_highlight = blocks.CharBlock(required=False, max_length=100, default="Contact Us")
+    description = blocks.TextBlock(
+        required=False,
+        default="Whether you have a quick question or want to book a full consultation — "
+        "we're easy to reach. Fill in the form and we'll respond within one business day",
+    )
+    description_highlight = blocks.CharBlock(
+        required=False, max_length=200, default="Fill in the form and we'll respond within one business day"
+    )
+    socials = blocks.ListBlock(SocialLinkBlock(), required=False, default=[])
+    destinations = blocks.ListBlock(DestinationChooserBlock(), required=False, default=[])
+    submit_label = blocks.CharBlock(required=False, max_length=40, default="Reserve Now")
+
+    class Meta:
+        icon = "form"
+        label = "Contact form"
+        group = "Sections"
+
+
 class PageHeroBlock(SectionBlock):
     """→ `src/components/sections/PageHero.tsx` for listing and landing pages."""
 

@@ -20,6 +20,8 @@ SECTION_BLOCKS = [
     ("hero", sections.HeroBlock()),
     ("header_card", sections.HeaderCardBlock()),
     ("page_hero", sections.PageHeroBlock()),
+    ("contact_hero", sections.ContactHeroBlock()),
+    ("contact_form", sections.ContactFormBlock()),
     ("intro_stats", sections.IntroStatsBlock()),
     ("popular_packages", sections.PopularPackagesBlock()),
     ("package_grid", sections.PackageGridBlock()),
