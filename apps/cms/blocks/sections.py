@@ -425,7 +425,13 @@ class ExperienceShowcaseBlock(SectionBlock):
 class WhyChooseUsCardBlock(blocks.StructBlock):
     theme = blocks.ChoiceBlock(choices=[("light", "Light"), ("dark", "Dark")], default="light")
     heading = blocks.CharBlock(max_length=120)
+    heading_highlight = blocks.CharBlock(
+        required=False, max_length=60, help_text="Word/phrase inside heading to accent (italic, green)."
+    )
     description = blocks.TextBlock()
+    description_highlight = blocks.CharBlock(
+        required=False, max_length=200, help_text="Phrase inside description to accent."
+    )
     image = APIImageChooserBlock(required=False, label="Circle image")
     link = LinkBlock(required=False)
 
@@ -708,6 +714,9 @@ class CTABannerBlock(SectionBlock):
     component = "CTABanner"
 
     heading = blocks.CharBlock(max_length=200)
+    heading_highlight = blocks.CharBlock(
+        required=False, max_length=60, help_text="Word/phrase inside heading to accent (italic, green)."
+    )
     text = blocks.TextBlock(required=False)
     background_image = APIImageChooserBlock(required=False)
     buttons = blocks.ListBlock(ButtonBlock(), required=False, default=[], max_num=3)
