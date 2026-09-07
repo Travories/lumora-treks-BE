@@ -134,3 +134,17 @@ class PackageDetailPageAutoCreateTests(TestCase):
             package = Package.objects.create(title="Mustang Trek", price=900)
 
         self.assertFalse(PackageDetailPage.objects.filter(package=package).exists())
+
+    def test_missing_page_self_heals_on_a_later_save(self):
+        # Created before the packages index exists -> no page yet.
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Manaslu Circuit", price=1100)
+        self.assertFalse(PackageDetailPage.objects.filter(package=package).exists())
+
+        # Once the index exists, any subsequent save creates the missing page.
+        self._build_packages_index()
+        with self.captureOnCommitCallbacks(execute=True):
+            package.summary = "Now with an index page"
+            package.save()
+
+        self.assertTrue(PackageDetailPage.objects.filter(package=package).exists())

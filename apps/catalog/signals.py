@@ -6,8 +6,9 @@ to a `PackageFolderPage` (slug = package slug) holding a `PackageDetailPage`
 (slug = package public_code) whose body is a single `package_detail` block.
 
 Rather than require an editor to hand-build that page tree (or re-run a seed
-command), this handler creates and publishes it automatically on first save.
-The tree-building mirrors `apps/cms/management/commands/seed_lumora.py`.
+command), this handler creates and publishes it automatically on save. It runs
+on every save (create-if-missing) so it self-heals a package that never got a
+page. The tree-building mirrors `apps/cms/management/commands/seed_lumora.py`.
 """
 
 import logging
@@ -80,8 +81,11 @@ def _ensure_detail_page(package):
 
 @receiver(post_save, sender=Package, dispatch_uid="catalog_package_autocreate_detail_page")
 def create_package_detail_page(sender, instance, created, **kwargs):
-    if not created:
-        return
+    # Runs on every save, not just creation: `_ensure_detail_page` is a cheap
+    # no-op once the page exists, so this self-heals a package whose page was
+    # never created (e.g. saved before the packages index existed, or a
+    # transient failure during the original create).
+    #
     # Defer until the package's own transaction commits: guarantees the row
     # (and its generated public_code) is persisted, and avoids orphan pages if
     # the save is rolled back.
