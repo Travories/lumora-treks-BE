@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
+from wagtail.models import Page
 
 from apps.accounts.models import TravelerProfile
 from apps.catalog.models import Package, TravelerReview
+from apps.cms.models import HomePage, PackageDetailPage, PackageFolderPage, PackageIndexPage
 
 
 class PackageReviewApiTests(APITestCase):
@@ -76,3 +79,58 @@ class PackageReviewApiTests(APITestCase):
         self.assertTrue(response.data["items"][0]["is_mine"])
         self.assertEqual(response.data["summary"]["total"], 2)
         self.assertEqual(response.data["summary"]["distribution"]["5"], 1)
+
+
+class PackageDetailPageAutoCreateTests(TestCase):
+    """The post_save signal in apps/catalog/signals.py should publish a live
+    detail page at /packages/<slug>/<public_code> whenever a package is created."""
+
+    def _build_packages_index(self):
+        root = Page.get_first_root_node()
+        # Wagtail's migrations seed a default page at slug "home"; use a distinct
+        # slug so this fixture's HomePage doesn't collide with it.
+        home = HomePage(title="Home", slug="home-test")
+        root.add_child(instance=home)
+        index = PackageIndexPage(title="Packages", slug="packages")
+        home.add_child(instance=index)
+        return index
+
+    def test_creating_package_publishes_folder_and_detail_pages(self):
+        index = self._build_packages_index()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Annapurna Base Camp", price=650)
+
+        # Re-fetch the index: the in-memory instance still caches numchild=0, so
+        # treebeard's get_children() would short-circuit via is_leaf().
+        index.refresh_from_db()
+        folder = index.get_children().type(PackageFolderPage).get(slug=package.slug).specific
+        detail = PackageDetailPage.objects.get(package=package)
+        self.assertEqual(detail.get_parent().specific, folder)
+        self.assertEqual(detail.slug, package.public_code)
+        self.assertTrue(detail.live)
+        self.assertEqual(detail.body[0].block_type, "package_detail")
+        self.assertEqual(detail.body[0].value["package"], package)
+
+    def test_auto_creation_is_idempotent_and_scoped_per_package(self):
+        index = self._build_packages_index()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            first = Package.objects.create(title="Everest Base Camp", price=1200)
+            second = Package.objects.create(title="Langtang Valley", price=500)
+
+        # Re-saving must not create a duplicate detail page.
+        with self.captureOnCommitCallbacks(execute=True):
+            first.summary = "Updated"
+            first.save()
+
+        self.assertEqual(PackageDetailPage.objects.filter(package=first).count(), 1)
+        self.assertEqual(PackageDetailPage.objects.filter(package=second).count(), 1)
+        index.refresh_from_db()
+        self.assertEqual(index.get_children().type(PackageFolderPage).count(), 2)
+
+    def test_package_saves_cleanly_without_a_packages_index(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Mustang Trek", price=900)
+
+        self.assertFalse(PackageDetailPage.objects.filter(package=package).exists())

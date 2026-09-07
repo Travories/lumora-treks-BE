@@ -411,5 +411,7 @@ class TravelerReview(models.Model):
 
 
 register_snippet(Destination)
-register_snippet(Package)
 register_snippet(Testimonial)
+# Package is registered via a dedicated SnippetViewSet in apps/catalog/wagtail_hooks.py
+# (adds a top-level "Packages" admin menu). Do not also register it here — a model can
+# only be registered once.
