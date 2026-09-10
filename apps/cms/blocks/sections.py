@@ -741,6 +741,30 @@ class CulturalToursBlock(PopularPackagesBlock):
         group = "Sections"
 
 
+class BlogListingBlock(SectionBlock):
+    """→ `src/components/sections/BlogGrid.tsx` — the editorial blog index
+    (featured story + category tabs + asymmetric card grid + pagination). The
+    posts themselves come from `/api/v2/blog/`; this block is the editorial
+    framing around them (same pattern as `PackageListingBlock`)."""
+
+    component = "BlogListing"
+
+    heading = blocks.CharBlock(default="Latest stories", max_length=200)
+    categories = blocks.ListBlock(
+        blocks.CharBlock(max_length=60),
+        required=False,
+        default=[],
+        help_text="Category filter tabs. Leave empty to use the defaults.",
+    )
+    page_size = blocks.IntegerBlock(default=5, min_value=1, max_value=48)
+    show_featured = blocks.BooleanBlock(required=False, default=True)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Blog listing"
+        group = "Sections"
+
+
 class RichTextSectionBlock(SectionBlock):
     """→ `RichTextSection.tsx` — freeform editorial content."""
 

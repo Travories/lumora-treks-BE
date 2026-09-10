@@ -26,6 +26,7 @@ SECTION_BLOCKS = [
     ("popular_packages", sections.PopularPackagesBlock()),
     ("package_grid", sections.PackageGridBlock()),
     ("package_listing", sections.PackageListingBlock()),
+    ("blog_listing", sections.BlogListingBlock()),
     ("experience_showcase", sections.ExperienceShowcaseBlock()),
     ("why_choose_us", sections.WhyChooseUsBlock()),
     ("authentic_experiences", sections.AuthenticExperiencesBlock()),

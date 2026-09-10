@@ -6,6 +6,7 @@ from apps.core.api.wagtail_api import api_router
 
 router = DefaultRouter()
 router.register("packages", views.PackageViewSet, basename="package")
+router.register("blog", views.BlogPostViewSet, basename="blog")
 router.register("destinations", views.DestinationViewSet, basename="destination")
 router.register("testimonials", views.TestimonialViewSet, basename="testimonial")
 router.register("videos", views.VideoViewSet, basename="video")

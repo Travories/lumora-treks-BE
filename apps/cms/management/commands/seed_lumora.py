@@ -10,6 +10,7 @@ the frontend can switch from hardcoded data to the API with no visual change.
     python manage.py seed_lumora --reset    # rebuild the home page body
 """
 
+from datetime import date
 from pathlib import Path
 
 from django.core.files.images import ImageFile
@@ -26,7 +27,7 @@ from apps.catalog.models import (
     PackageRatingSummary,
     Testimonial,
 )
-from apps.cms.models import HomePage, PackageIndexPage, StandardPage
+from apps.cms.models import BlogIndexPage, BlogPostPage, HomePage, PackageIndexPage, StandardPage
 from apps.core.models import CustomImage
 from apps.navigation.models import (
     BrandSettings,
@@ -36,7 +37,7 @@ from apps.navigation.models import (
     ThemeSettings,
 )
 
-FE_IMAGE_DIR = Path(__file__).resolve().parents[5] / "lumora-treks-FE" / "public" / "images"
+FE_IMAGE_DIR = Path(__file__).resolve().parents[5] / "lumora-FE" / "public" / "images"
 
 
 class Command(BaseCommand):
@@ -61,6 +62,7 @@ class Command(BaseCommand):
         self.create_package_details()
         home = self.create_home_page()
         self.create_editorial_pages(home)
+        self.create_blog(home)
         self.create_settings()
 
         self.stdout.write(self.style.SUCCESS(f"Seeded home page: {home.title} (id={home.pk})"))
@@ -864,6 +866,8 @@ class Command(BaseCommand):
         if not success:
             success = StandardPage(title="Payment Success", slug="success")
             checkout.add_child(instance=success)
+        else:
+            success = success.specific  # `.first()` returns a base Page; need `.body`
         if self.reset or not success.body:
             success.body = [{"type": "payment_success", "value": {"settings": self.settings("payment-success")}}]
             success.save_revision().publish()
@@ -914,6 +918,188 @@ class Command(BaseCommand):
                     "settings": self.settings("package-detail"),
                 }}],
             )
+
+    # -------------------------------------------------------------- blog
+
+    #: (name, role) keyed for reuse across posts.
+    BLOG_AUTHORS = {
+        "aarav": ("Aarav Thapa", "Lead Guide"),
+        "mira": ("Mira Gurung", "Travel Writer"),
+        "kiran": ("Kiran Rai", "Culture Editor"),
+    }
+
+    def build_article_body(self, title):
+        """Prose article body mirroring the frontend dummy content."""
+        return [
+            {
+                "type": "paragraph",
+                "value": (
+                    f"<p>{title} begins the way every great Himalayan journey does — early, "
+                    "cold, and quietly hopeful. Before the sun crests the ridgeline, the trail "
+                    "is yours alone, and the mountains feel less like a destination and more "
+                    "like a conversation you are only just beginning.</p>"
+                ),
+            },
+            {
+                "type": "paragraph",
+                "value": (
+                    "<p>We designed this route to slow you down. Fewer kilometres, more "
+                    "moments: a tea house where the owner remembers your name, a pass that "
+                    "opens onto a valley no photograph does justice, a night sky so dense with "
+                    "stars it feels close enough to touch.</p>"
+                ),
+            },
+            {"type": "heading", "value": "When to go"},
+            {
+                "type": "paragraph",
+                "value": (
+                    "<p>Autumn (late September to November) brings the clearest skies and the "
+                    "sharpest mountain views, while spring (March to May) trades a little haze "
+                    "for hillsides of blooming rhododendron. Both seasons are kind to "
+                    "first-time trekkers.</p>"
+                ),
+            },
+            {
+                "type": "image",
+                "value": {
+                    "image": self.pk("exp-big"),
+                    "alt": "Golden light over the Himalayan foothills",
+                    "caption": "First light on the ridge — the reward for an early start.",
+                },
+            },
+            {"type": "heading", "value": "What makes it different"},
+            {
+                "type": "paragraph",
+                "value": (
+                    "<p>This isn't a race to the highest point. It's a route built around the "
+                    "people and places along the way — local homestays over anonymous lodges, "
+                    "seasonal food over packaged meals, and guides who grew up on these "
+                    "trails.</p>"
+                ),
+            },
+            {
+                "type": "quote",
+                "value": {
+                    "text": "You don't conquer a mountain. You are simply allowed, for a few days, to walk in its company.",
+                    "cite": "A saying from the trail",
+                },
+            },
+            {
+                "type": "paragraph",
+                "value": (
+                    "<p>By the time you descend, something has shifted. The photos will be "
+                    "beautiful — they always are — but what stays with you is quieter: the "
+                    "rhythm of your own footsteps, the warmth of shared tea, the particular "
+                    "silence of high places.</p>"
+                ),
+            },
+        ]
+
+    def create_blog(self, home):
+        """Create the Blog index + sample posts, mirroring the FE dummy dataset."""
+        index = home.get_children().type(BlogIndexPage).first()
+        if index:
+            index = index.specific
+        else:
+            index = BlogIndexPage(
+                title="Blog",
+                slug="blog",
+                intro="Field notes and trekking guides from the trail.",
+                seo_title="Stories & Guides | Lumora Treks",
+                search_description=(
+                    "Field notes, trekking guides, and cultural stories from the Himalaya."
+                ),
+            )
+            home.add_child(instance=index)
+
+        if self.reset or not index.body:
+            index.body = [
+                {
+                    "type": "page_hero",
+                    "value": {
+                        "title": "Stories & Guides",
+                        "subtitle": "Field notes and trekking guides from the trail — stories worth carrying home.",
+                        "image": self.pk("exp-big"),
+                        "image_alt": "Himalayan trail at golden hour",
+                        "image_width": 620,
+                        "image_height": 460,
+                        "show_search": False,
+                        "settings": self.settings("blog-hero"),
+                    },
+                },
+                {
+                    "type": "blog_listing",
+                    "value": {
+                        "heading": "Latest stories",
+                        "categories": ["All", "Trekking", "Culture", "Food & Stays", "Guides"],
+                        "page_size": 5,
+                        "show_featured": True,
+                        "settings": self.settings("blog"),
+                    },
+                },
+                {
+                    "type": "cta_banner",
+                    "value": {
+                        "heading": "Create memories that stay with you long after the Journey Ends",
+                        "text": "",
+                        "background_image": self.pk("cta-bg"),
+                        "buttons": [{
+                            **self.empty_button(),
+                            "label": "Reserve Now",
+                            "link_type": "url",
+                            "url": "/enquiry",
+                        }],
+                        "settings": self.settings("blog-cta", container="full"),
+                    },
+                },
+            ]
+            index.save_revision().publish()
+
+        # slug, title, excerpt, image_stem, category, author_key, featured, date, read_min
+        posts = [
+            ("annapurna-the-case-for-going-slow", "Annapurna: The Case for Going Slow",
+             "Why the most rewarding way through the Annapurna region isn't the fastest one — a field guide to walking with intention.",
+             "pkg-annapurna", "Trekking", "aarav", True, date(2026, 8, 28), 8),
+            ("a-morning-in-kathmandu-durbar-square", "A Morning in Kathmandu Durbar Square",
+             "Temples, courtyards, and living history — how to experience the old heart of the city before the crowds arrive.",
+             "dest-kathmandu", "Culture", "kiran", False, date(2026, 8, 19), 6),
+            ("what-to-eat-on-the-trail", "What to Eat on the Trail: A Tea-House Menu",
+             "Dal bhat power, garlic soup for altitude, and the quiet ritual of milk tea at 3,000 metres.",
+             "experience-patan", "Food & Stays", "mira", False, date(2026, 8, 11), 5),
+            ("the-poon-hill-sunrise-is-worth-the-alarm", "The Poon Hill Sunrise Is Worth the Alarm",
+             "A 4am start, a candle-lit climb, and one of the most generous mountain panoramas in the world.",
+             "dest-poonhills", "Trekking", "aarav", False, date(2026, 7, 30), 4),
+            ("the-only-packing-list-you-need", "The Only Himalayan Packing List You Need",
+             "Layers, not luggage. Everything that earns its place in your pack — and the things that don't.",
+             "pkgp-4", "Guides", "mira", False, date(2026, 7, 18), 7),
+            ("staying-with-a-family-in-ghandruk", "Staying With a Family in Ghandruk",
+             "What a night in a Gurung homestay taught us about hospitality, and why we build it into every trip.",
+             "experience-dhorpatan", "Culture", "kiran", False, date(2026, 7, 5), 6),
+            ("when-is-the-best-time-to-trek-nepal", "When Is the Best Time to Trek in Nepal?",
+             "Autumn clarity vs. spring blooms vs. quiet-season solitude — an honest month-by-month breakdown.",
+             "dest-annapurna", "Guides", "aarav", False, date(2026, 6, 22), 9),
+        ]
+
+        for slug, title, excerpt, image_stem, category, author_key, featured, pub, read in posts:
+            post = index.get_children().type(BlogPostPage).filter(slug=slug).first()
+            if post:
+                post = post.specific
+            else:
+                post = BlogPostPage(title=title, slug=slug)
+                index.add_child(instance=post)
+            if self.reset or not post.article_body:
+                name, role = self.BLOG_AUTHORS[author_key]
+                post.excerpt = excerpt
+                post.hero_image = self.image(image_stem)
+                post.category = category
+                post.featured = featured
+                post.published_date = pub
+                post.author_name = name
+                post.author_role = role
+                post.author_avatar = self.image("avatar-1")
+                post.read_time_minutes = read
+                post.article_body = self.build_article_body(title)
+                post.save_revision().publish()
 
     # ------------------------------------------------------------- helpers
 
@@ -973,6 +1159,7 @@ class Command(BaseCommand):
                 {"type": "item", "value": self.nav_item("Home", "url", url="/")},
                 {"type": "item", "value": self.nav_item("Packages", "url", url="/packages")},
                 {"type": "item", "value": self.nav_item("Destinations", "url", url="/destinations")},
+                {"type": "item", "value": self.nav_item("Blog", "url", url="/blog")},
                 {"type": "item", "value": self.nav_item("Contact Us", "url", url="/contact")},
             ]
 

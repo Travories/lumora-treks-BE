@@ -14,6 +14,7 @@ from wagtail.models import Page
 from wagtail.search import index
 
 from apps.cms.blocks import SECTION_BLOCKS
+from apps.cms.blocks.article import ARTICLE_BLOCKS
 from apps.core.serializers import serialize_image
 
 
@@ -186,33 +187,73 @@ class BlogIndexPage(BasePage):
         verbose_name = "Blog index page"
 
 
+#: Blog categories — kept in sync with the frontend FilterTabs (`BLOG_CATEGORIES`).
+BLOG_CATEGORY_CHOICES = [
+    ("Trekking", "Trekking"),
+    ("Culture", "Culture"),
+    ("Food & Stays", "Food & Stays"),
+    ("Guides", "Guides"),
+]
+
+
 class BlogPostPage(BasePage):
-    """Travel stories / guides — body uses the same section library."""
+    """Travel stories / guides.
+
+    The reading experience is driven by `article_body` — a prose StreamField
+    (heading / rich paragraph / pull-quote / image) that the frontend's
+    `ArticleBody` renders in a narrow measure. The inherited section `body`
+    stays available for any extra full-width sections below the article.
+    """
 
     excerpt = models.TextField(blank=True)
     hero_image = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    category = models.CharField(max_length=40, blank=True, choices=BLOG_CATEGORY_CHOICES)
+    featured = models.BooleanField(
+        default=False, help_text="Show as the large featured story at the top of the blog index."
+    )
     published_date = models.DateField(null=True, blank=True)
     author_name = models.CharField(max_length=120, blank=True)
+    author_role = models.CharField(max_length=160, blank=True, help_text="e.g. Lead Guide, Travel Writer.")
+    author_avatar = models.ForeignKey(
+        "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     read_time_minutes = models.PositiveIntegerField(null=True, blank=True)
+    article_body = StreamField(ARTICLE_BLOCKS, blank=True, collapsed=False, verbose_name="Article")
 
     content_panels = Page.content_panels + [
         FieldPanel("excerpt"),
         FieldPanel("hero_image"),
         MultiFieldPanel(
-            [FieldPanel("published_date"), FieldPanel("author_name"), FieldPanel("read_time_minutes")],
+            [FieldPanel("category"), FieldPanel("featured")],
+            heading="Classification",
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("published_date"),
+                FieldPanel("author_name"),
+                FieldPanel("author_role"),
+                FieldPanel("author_avatar"),
+                FieldPanel("read_time_minutes"),
+            ],
             heading="Meta",
         ),
-        FieldPanel("body", heading="Page sections"),
+        FieldPanel("article_body"),
+        FieldPanel("body", heading="Extra sections"),
     ]
 
     api_fields = BasePage.api_fields + [
         APIField("excerpt"),
         APIField("hero_image_data"),
+        APIField("category"),
+        APIField("featured"),
         APIField("published_date"),
         APIField("author_name"),
+        APIField("author_role"),
+        APIField("author_avatar_data"),
         APIField("read_time_minutes"),
+        APIField("article_body"),
     ]
 
     parent_page_types = ["cms.BlogIndexPage"]
@@ -223,3 +264,7 @@ class BlogPostPage(BasePage):
     @property
     def hero_image_data(self):
         return serialize_image(self.hero_image)
+
+    @property
+    def author_avatar_data(self):
+        return serialize_image(self.author_avatar)

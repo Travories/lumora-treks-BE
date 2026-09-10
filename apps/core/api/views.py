@@ -41,6 +41,7 @@ from apps.catalog.serializers import (
 )
 from apps.core.api.pagination import LumoraPagination
 from apps.cms.blocks import COMPONENT_MAP, SECTION_BLOCKS
+from apps.cms.serializers import serialize_blog_post
 from apps.core.models import Video
 from apps.core.serializers import serialize_image, serialize_video
 from apps.leads.models import LeadSubmission
@@ -164,6 +165,44 @@ class DestinationViewSet(DictModelViewSet):
         if params.get("region"):
             queryset = queryset.filter(region__iexact=params["region"])
         return queryset
+
+
+class BlogPostViewSet(DictModelViewSet):
+    """Published blog posts at `/api/v2/blog/` (list) and `/api/v2/blog/<slug>/`
+    (detail with the prose article body). Filters: category, featured, search,
+    exclude (slug)."""
+
+    serialize = staticmethod(serialize_blog_post)
+
+    def get_queryset(self):
+        from apps.cms.models import BlogPostPage
+
+        return (
+            BlogPostPage.objects.live()
+            .public()
+            .specific()
+            .select_related("hero_image", "author_avatar")
+            .order_by("-published_date", "-first_published_at", "-pk")
+        )
+
+    def filter_queryset(self, queryset, request):
+        params = request.query_params
+        if params.get("featured") in {"1", "true", "yes"}:
+            queryset = queryset.filter(featured=True)
+        category = params.get("category")
+        if category and category != "All":
+            queryset = queryset.filter(category=category)
+        if params.get("search"):
+            queryset = queryset.filter(title__icontains=params["search"])
+        if params.get("exclude"):
+            queryset = queryset.exclude(slug=params["exclude"])
+        return queryset
+
+    def get_object(self, slug):
+        queryset = self.get_queryset()
+        if slug.isdigit():
+            return get_object_or_404(queryset, pk=int(slug))
+        return get_object_or_404(queryset, slug=slug)
 
 
 class TestimonialViewSet(DictModelViewSet):
