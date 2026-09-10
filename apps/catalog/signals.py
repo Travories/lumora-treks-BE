@@ -51,14 +51,28 @@ def _ensure_detail_page(package):
         )
         return
 
-    folder = (
-        index.get_children().type(PackageFolderPage).filter(slug=package.slug).first()
-    )
+    # A page may already occupy `/packages/<slug>/` — e.g. a StandardPage the
+    # seed command builds for the same catalogue URL. Wagtail enforces unique
+    # slugs per parent regardless of page type, so don't try to add a second
+    # one: the URL already resolves, so there's nothing to self-heal here.
+    existing = index.get_children().filter(slug=package.slug).first()
+    if existing is not None and existing.specific_class is not PackageFolderPage:
+        logger.info(
+            "Slug %r under the packages index is already used by a %s; skipping "
+            "auto-creation of the package folder/detail page.",
+            package.slug,
+            existing.specific_class.__name__ if existing.specific_class else "page",
+        )
+        return
+
+    folder = existing.specific if existing is not None else None
     if folder is None:
         folder = PackageFolderPage(title=package.title, slug=package.slug)
         index.add_child(instance=folder)
-    else:
-        folder = folder.specific
+
+    # Same guard one level down for the detail page's slug (public_code).
+    if folder.get_children().filter(slug=package.public_code).exists():
+        return
 
     detail = PackageDetailPage(
         title=package.title,
@@ -79,6 +93,18 @@ def _ensure_detail_page(package):
     detail.save_revision().publish()
 
 
+def _ensure_detail_page_safe(package):
+    """Never let auto-creation of the public page break a Package save."""
+    try:
+        _ensure_detail_page(package)
+    except Exception:  # pragma: no cover — defensive: log, don't propagate
+        logger.exception(
+            "Failed to auto-create the detail page for package %r; the package "
+            "was saved. Create/repair its page in Wagtail if needed.",
+            getattr(package, "slug", package.pk),
+        )
+
+
 @receiver(post_save, sender=Package, dispatch_uid="catalog_package_autocreate_detail_page")
 def create_package_detail_page(sender, instance, created, **kwargs):
     # Runs on every save, not just creation: `_ensure_detail_page` is a cheap
@@ -89,4 +115,4 @@ def create_package_detail_page(sender, instance, created, **kwargs):
     # Defer until the package's own transaction commits: guarantees the row
     # (and its generated public_code) is persisted, and avoids orphan pages if
     # the save is rolled back.
-    transaction.on_commit(lambda: _ensure_detail_page(instance))
+    transaction.on_commit(lambda: _ensure_detail_page_safe(instance))
