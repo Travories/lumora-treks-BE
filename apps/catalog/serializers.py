@@ -53,6 +53,14 @@ def serialize_package(package, detail=False):
     """
     if package is None:
         return None
+    group_pricing = [
+        {
+            "min_people": tier.min_people,
+            "max_people": tier.max_people,
+            "price_per_person": float(tier.price_per_person),
+        }
+        for tier in package.group_pricing.all()
+    ]
     data = {
         "id": package.pk,
         "slug": package.slug,
@@ -71,6 +79,7 @@ def serialize_package(package, detail=False):
         "price": float(package.price),
         "discount_price": float(package.discount_price) if package.discount_price is not None else None,
         "currency": package.currency,
+        "group_pricing": group_pricing,
         "difficulty": package.difficulty,
         "is_popular": package.is_popular,
         "source": package.source,

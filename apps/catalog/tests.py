@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
@@ -6,7 +7,8 @@ from rest_framework.test import APITestCase
 from wagtail.models import Page
 
 from apps.accounts.models import TravelerProfile
-from apps.catalog.models import Package, TravelerReview
+from apps.catalog.models import Package, PackageGroupPrice, TravelerReview
+from apps.catalog.serializers import serialize_package
 from apps.cms.models import HomePage, PackageDetailPage, PackageFolderPage, PackageIndexPage
 
 
@@ -22,6 +24,10 @@ class PackageReviewApiTests(APITestCase):
 
     def authenticate(self, user):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {Token.objects.create(user=user).key}")
+
+    def test_new_package_starts_unrated(self):
+        self.assertEqual(float(self.package.rating), 0.0)
+        self.assertEqual(self.package.review_count, 0)
 
     def test_review_requires_login_to_create(self):
         response = self.client.post(self.url, {"rating": 5, "body": "A wonderful and memorable trek."}, format="json")
@@ -79,6 +85,63 @@ class PackageReviewApiTests(APITestCase):
         self.assertTrue(response.data["items"][0]["is_mine"])
         self.assertEqual(response.data["summary"]["total"], 2)
         self.assertEqual(response.data["summary"]["distribution"]["5"], 1)
+
+
+class PackageGroupPricingTests(TestCase):
+    def setUp(self):
+        self.package = Package.objects.create(title="Everest Base Camp", price=1560)
+
+    def test_group_price_requires_sensible_bounds_and_positive_price(self):
+        invalid_range = PackageGroupPrice(
+            package=self.package,
+            min_people=4,
+            max_people=3,
+            price_per_person=1400,
+        )
+        with self.assertRaises(ValidationError) as range_error:
+            invalid_range.full_clean()
+        self.assertIn("max_people", range_error.exception.message_dict)
+
+        invalid_price = PackageGroupPrice(
+            package=self.package,
+            min_people=1,
+            max_people=1,
+            price_per_person=0,
+        )
+        with self.assertRaises(ValidationError) as price_error:
+            invalid_price.full_clean()
+        self.assertIn("price_per_person", price_error.exception.message_dict)
+
+    def test_package_payload_contains_ordered_group_pricing(self):
+        PackageGroupPrice.objects.create(
+            package=self.package,
+            min_people=4,
+            max_people=7,
+            price_per_person=1220,
+            sort_order=2,
+        )
+        PackageGroupPrice.objects.create(
+            package=self.package,
+            min_people=1,
+            max_people=1,
+            price_per_person=1560,
+            sort_order=1,
+        )
+        PackageGroupPrice.objects.create(
+            package=self.package,
+            min_people=8,
+            max_people=None,
+            price_per_person=1140,
+            sort_order=3,
+        )
+
+        expected = [
+            {"min_people": 1, "max_people": 1, "price_per_person": 1560.0},
+            {"min_people": 4, "max_people": 7, "price_per_person": 1220.0},
+            {"min_people": 8, "max_people": None, "price_per_person": 1140.0},
+        ]
+        self.assertEqual(serialize_package(self.package)["group_pricing"], expected)
+        self.assertEqual(serialize_package(self.package, detail=True)["group_pricing"], expected)
 
 
 class PackageDetailPageAutoCreateTests(TestCase):

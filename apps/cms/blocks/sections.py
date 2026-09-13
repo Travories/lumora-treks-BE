@@ -191,7 +191,7 @@ class HeroBlock(SectionBlock):
     class Meta:
         icon = "image"
         label = "Hero"
-        group = "Sections"
+        group = "Page headers"
 
 
 class HeaderCardBlock(SectionBlock):
@@ -207,7 +207,7 @@ class HeaderCardBlock(SectionBlock):
     class Meta:
         icon = "doc-full"
         label = "Header card"
-        group = "Sections"
+        group = "Page headers"
 
 
 class SocialLinkBlock(blocks.StructBlock):
@@ -249,7 +249,7 @@ class ContactHeroBlock(SectionBlock):
     class Meta:
         icon = "image"
         label = "Contact hero"
-        group = "Sections"
+        group = "Page headers"
 
 
 class ContactFormBlock(SectionBlock):
@@ -275,7 +275,7 @@ class ContactFormBlock(SectionBlock):
     class Meta:
         icon = "form"
         label = "Contact form"
-        group = "Sections"
+        group = "Actions & forms"
 
 
 class PageHeroBlock(SectionBlock):
@@ -294,7 +294,7 @@ class PageHeroBlock(SectionBlock):
     class Meta:
         icon = "image"
         label = "Page hero"
-        group = "Sections"
+        group = "Page headers"
 
 
 class IntroStatsBlock(SectionBlock):
@@ -315,7 +315,7 @@ class IntroStatsBlock(SectionBlock):
     class Meta:
         icon = "form"
         label = "Intro + stats"
-        group = "Sections"
+        group = "Page headers"
 
 
 class PopularPackagesBlock(SectionBlock):
@@ -346,7 +346,7 @@ class PopularPackagesBlock(SectionBlock):
     class Meta:
         icon = "list-ul"
         label = "Package carousel"
-        group = "Sections"
+        group = "Packages"
 
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
@@ -366,7 +366,7 @@ class PackageGridBlock(PopularPackagesBlock):
     class Meta:
         icon = "grip"
         label = "Package grid"
-        group = "Sections"
+        group = "Packages"
 
 
 class PackageListingBlock(SectionBlock):
@@ -383,7 +383,7 @@ class PackageListingBlock(SectionBlock):
     class Meta:
         icon = "list-ul"
         label = "Package listing"
-        group = "Sections"
+        group = "Packages"
 
 
 def _resolve_packages(value):
@@ -401,7 +401,7 @@ def _resolve_packages(value):
         queryset = Package.objects.filter(is_active=True, is_popular=True)
     else:  # sdk — the frontend resolves these ids against the Travories SDK
         return []
-    return [serialize_package(package) for package in queryset[:limit]]
+    return [serialize_package(package) for package in queryset.prefetch_related("group_pricing")[:limit]]
 
 
 class ExperienceShowcaseBlock(SectionBlock):
@@ -419,7 +419,7 @@ class ExperienceShowcaseBlock(SectionBlock):
     class Meta:
         icon = "duplicate"
         label = "Experience showcase"
-        group = "Sections"
+        group = "Destinations & experiences"
 
 
 class WhyChooseUsCardBlock(blocks.StructBlock):
@@ -452,7 +452,7 @@ class WhyChooseUsBlock(SectionBlock):
     class Meta:
         icon = "pick"
         label = "Why choose us"
-        group = "Sections"
+        group = "Trust & information"
 
 
 class BentoGridBlock(SectionBlock):
@@ -486,7 +486,7 @@ class BentoGridBlock(SectionBlock):
     class Meta:
         icon = "grip"
         label = "Bento grid"
-        group = "Sections"
+        group = "Destinations & experiences"
 
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
@@ -524,7 +524,7 @@ class DestinationsGridBlock(SectionBlock):
     class Meta:
         icon = "grip"
         label = "Destinations carousel"
-        group = "Sections"
+        group = "Destinations & experiences"
 
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
@@ -593,7 +593,7 @@ class FeaturesListBlock(SectionBlock):
     class Meta:
         icon = "list-ol"
         label = "Features list"
-        group = "Sections"
+        group = "Trust & information"
 
 
 class TestimonialBlock(SectionBlock):
@@ -621,7 +621,7 @@ class TestimonialBlock(SectionBlock):
     class Meta:
         icon = "openquote"
         label = "Testimonial (feature)"
-        group = "Sections"
+        group = "Trust & information"
 
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
@@ -649,7 +649,7 @@ class TestimonialsCarouselBlock(SectionBlock):
     class Meta:
         icon = "openquote"
         label = "Testimonials carousel"
-        group = "Sections"
+        group = "Trust & information"
 
     def get_api_representation(self, value, context=None):
         data = super().get_api_representation(value, context)
@@ -688,7 +688,7 @@ class FAQBlock(SectionBlock):
     class Meta:
         icon = "help"
         label = "FAQ"
-        group = "Sections"
+        group = "Trust & information"
 
 
 class StatsBannerBlock(SectionBlock):
@@ -705,7 +705,7 @@ class StatsBannerBlock(SectionBlock):
     class Meta:
         icon = "form"
         label = "Stats banner"
-        group = "Sections"
+        group = "Trust & information"
 
 
 class CTABannerBlock(SectionBlock):
@@ -724,7 +724,7 @@ class CTABannerBlock(SectionBlock):
     class Meta:
         icon = "bullhorn"
         label = "CTA banner"
-        group = "Sections"
+        group = "Actions & forms"
 
 
 class CulturalToursBlock(PopularPackagesBlock):
@@ -738,7 +738,7 @@ class CulturalToursBlock(PopularPackagesBlock):
     class Meta:
         icon = "list-ul"
         label = "Cultural & day tours"
-        group = "Sections"
+        group = "Packages"
 
 
 class BlogListingBlock(SectionBlock):
@@ -762,7 +762,7 @@ class BlogListingBlock(SectionBlock):
     class Meta:
         icon = "list-ul"
         label = "Blog listing"
-        group = "Sections"
+        group = "Content & media"
 
 
 class RichTextSectionBlock(SectionBlock):
@@ -779,7 +779,7 @@ class RichTextSectionBlock(SectionBlock):
     class Meta:
         icon = "doc-full"
         label = "Rich text"
-        group = "Sections"
+        group = "Content & media"
 
 
 class GalleryItemBlock(blocks.StructBlock):
@@ -810,7 +810,7 @@ class GalleryBlock(SectionBlock):
     class Meta:
         icon = "image"
         label = "Gallery"
-        group = "Sections"
+        group = "Content & media"
 
 
 class VideoSectionBlock(SectionBlock):
@@ -829,7 +829,7 @@ class VideoSectionBlock(SectionBlock):
     class Meta:
         icon = "media"
         label = "Video"
-        group = "Sections"
+        group = "Content & media"
 
 
 class FormFieldBlock(blocks.StructBlock):
@@ -884,7 +884,7 @@ class LeadFormBlock(SectionBlock):
     class Meta:
         icon = "mail"
         label = "Lead form"
-        group = "Sections"
+        group = "Actions & forms"
 
 
 class PackageEnquiryBlock(SectionBlock):
@@ -967,7 +967,7 @@ class AuthenticExperiencesBlock(SectionBlock):
     class Meta:
         icon = "duplicate"
         label = "Authentic experiences"
-        group = "Sections"
+        group = "Destinations & experiences"
 
 
 class EmbedSectionBlock(SectionBlock):
@@ -984,4 +984,4 @@ class EmbedSectionBlock(SectionBlock):
     class Meta:
         icon = "code"
         label = "Embed"
-        group = "Sections"
+        group = "Content & media"

@@ -101,7 +101,11 @@ class DictModelViewSet(viewsets.ViewSet):
 
 
 class PackageViewSet(DictModelViewSet):
-    queryset = Package.objects.filter(is_active=True).select_related("image", "destination", "rating_summary")
+    queryset = (
+        Package.objects.filter(is_active=True)
+        .select_related("image", "destination", "rating_summary")
+        .prefetch_related("group_pricing")
+    )
     serialize = staticmethod(serialize_package)
 
     def get_queryset(self):
@@ -140,7 +144,9 @@ class DestinationViewSet(DictModelViewSet):
     queryset = Destination.objects.all().select_related("image").prefetch_related(
         Prefetch(
             "packages",
-            queryset=Package.objects.filter(is_active=True).order_by("price", "pk"),
+            queryset=Package.objects.filter(is_active=True)
+            .prefetch_related("group_pricing")
+            .order_by("price", "pk"),
             to_attr="starting_packages",
         )
     )
@@ -152,7 +158,9 @@ class DestinationViewSet(DictModelViewSet):
             return queryset.prefetch_related(
                 Prefetch(
                     "packages",
-                    queryset=Package.objects.filter(is_active=True).select_related("image", "destination"),
+                    queryset=Package.objects.filter(is_active=True)
+                    .select_related("image", "destination")
+                    .prefetch_related("group_pricing"),
                     to_attr="active_packages",
                 )
             )

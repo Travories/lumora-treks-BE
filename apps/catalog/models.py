@@ -7,10 +7,13 @@ Packages can be authored fully in the CMS, or mirrored from the company SDK
 frontend caring which is which.
 """
 
+from decimal import Decimal
 import secrets
 import string
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 from modelcluster.fields import ParentalKey
@@ -152,6 +155,45 @@ class PackageIncludedItem(Orderable):
         ordering = ["kind", "sort_order"]
 
 
+class PackageGroupPrice(Orderable):
+    """A per-person price for a contiguous group-size band."""
+
+    package = ParentalKey("catalog.Package", related_name="group_pricing", on_delete=models.CASCADE)
+    min_people = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Smallest group size eligible for this price.",
+    )
+    max_people = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Largest eligible group size. Leave blank for no upper limit.",
+    )
+    price_per_person = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+
+    panels = [FieldPanel("min_people"), FieldPanel("max_people"), FieldPanel("price_per_person")]
+
+    class Meta:
+        ordering = ["sort_order", "min_people"]
+
+    def clean(self):
+        super().clean()
+        if (
+            self.min_people is not None
+            and self.max_people is not None
+            and self.max_people < self.min_people
+        ):
+            raise ValidationError({"max_people": "Maximum group size must be at least the minimum."})
+
+    def __str__(self):
+        upper_bound = self.max_people if self.max_people is not None else "+"
+        return f"{self.min_people}–{upper_bound}: {self.price_per_person}"
+
+
 class Package(index.Indexed, SlugMixin, ClusterableModel):
     """
     A travel package. Matches the frontend `TravelPackage` type, plus the
@@ -191,7 +233,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         related_name="+",
         help_text="Card / hero image.",
     )
-    rating = models.DecimalField(max_digits=3, decimal_places=1, default=5.0)
+    rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
     duration = models.CharField(max_length=120, blank=True, help_text="e.g. 4 days & 3 nights")
     duration_days = models.PositiveIntegerField(null=True, blank=True)
@@ -242,16 +284,13 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
                 FieldPanel("duration_days"),
                 FieldPanel("people_count"),
                 FieldPanel("difficulty"),
-                FieldPanel("rating"),
-                FieldPanel("review_count"),
             ],
             heading="Package facts",
         ),
+        InlinePanel("group_pricing", label="Group price", heading="Group pricing per person"),
         FieldPanel("destination"),
         InlinePanel("highlights", label="Highlight"),
         InlinePanel("itinerary", label="Itinerary day"),
-        InlinePanel("included_items", label="Included / excluded item"),
-        MultiFieldPanel([FieldPanel("includes"), FieldPanel("excludes")], heading="Inclusions"),
         MultiFieldPanel(
             [FieldPanel("is_popular"), FieldPanel("is_active"), FieldPanel("sort_order")],
             heading="Visibility",

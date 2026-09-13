@@ -23,8 +23,8 @@ class BasePage(Page):
 
     # The StreamField is the editable page outline: editors see Hero, Stats,
     # Package grid, FAQ, CTA, etc. in the same order the frontend renders them.
-    # Keep the field open so the outline is immediately visible in Wagtail.
-    body = StreamField(SECTION_BLOCKS, blank=True, collapsed=False)
+    # Keep each section compact so long pages read as an editable outline.
+    body = StreamField(SECTION_BLOCKS, blank=True, collapsed=True)
 
     og_image = models.ForeignKey(
         "core.CustomImage",
