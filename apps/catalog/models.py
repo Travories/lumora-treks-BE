@@ -7,7 +7,6 @@ Packages can be authored fully in the CMS, or mirrored from the company SDK
 frontend caring which is which.
 """
 
-from decimal import Decimal
 import secrets
 import string
 
@@ -169,10 +168,9 @@ class PackageGroupPrice(Orderable):
         validators=[MinValueValidator(1)],
         help_text="Largest eligible group size. Leave blank for no upper limit.",
     )
-    price_per_person = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))],
+    price_per_person = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Whole-number price per person; do not enter decimals.",
     )
 
     panels = [FieldPanel("min_people"), FieldPanel("max_people"), FieldPanel("price_per_person")]

@@ -1,5 +1,8 @@
+import io
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
@@ -9,6 +12,7 @@ from wagtail.models import Page
 from apps.accounts.models import TravelerProfile
 from apps.catalog.models import Package, PackageGroupPrice, TravelerReview
 from apps.catalog.serializers import serialize_package
+from apps.catalog.pricing import default_group_prices
 from apps.cms.models import HomePage, PackageDetailPage, PackageFolderPage, PackageIndexPage
 
 
@@ -143,6 +147,27 @@ class PackageGroupPricingTests(TestCase):
         self.assertEqual(serialize_package(self.package)["group_pricing"], expected)
         self.assertEqual(serialize_package(self.package, detail=True)["group_pricing"], expected)
 
+    def test_default_group_prices_are_whole_numbers_with_10_to_20_percent_reductions(self):
+        tiers = default_group_prices(400.23)
+
+        self.assertEqual(
+            [tier["price_per_person"] for tier in tiers],
+            [400, 360, 340, 320],
+        )
+        self.assertTrue(all(isinstance(tier["price_per_person"], int) for tier in tiers))
+
+    def test_population_command_is_dry_run_then_idempotent(self):
+        call_command("populate_group_pricing", stdout=io.StringIO())
+        self.assertEqual(self.package.group_pricing.count(), 0)
+
+        call_command("populate_group_pricing", "--apply", stdout=io.StringIO())
+        self.assertEqual(self.package.group_pricing.count(), 4)
+
+        output = io.StringIO()
+        call_command("populate_group_pricing", "--apply", stdout=output)
+        self.assertIn("Populated group pricing for 0 packages.", output.getvalue())
+        self.assertEqual(self.package.group_pricing.count(), 4)
+
 
 class PackageDetailPageAutoCreateTests(TestCase):
     """The post_save signal in apps/catalog/signals.py should publish a live
@@ -172,8 +197,20 @@ class PackageDetailPageAutoCreateTests(TestCase):
         self.assertEqual(detail.get_parent().specific, folder)
         self.assertEqual(detail.slug, package.public_code)
         self.assertTrue(detail.live)
-        self.assertEqual(detail.body[0].block_type, "package_detail")
-        self.assertEqual(detail.body[0].value["package"], package)
+        self.assertEqual(
+            [block.block_type for block in detail.body],
+            [
+                "package_header",
+                "package_overview",
+                "package_booking",
+                "package_itinerary",
+                "package_reviews",
+            ],
+        )
+        self.assertEqual(
+            detail.body[2].value["reserve_href"],
+            f"/enquiry?package={package.slug}",
+        )
 
     def test_auto_creation_is_idempotent_and_scoped_per_package(self):
         index = self._build_packages_index()

@@ -552,6 +552,39 @@ class DestinationDetailBlock(SectionBlock):
         group = "Page templates"
 
 
+class DestinationHeaderBlock(SectionBlock):
+    """Destination breadcrumb, region, title and introduction screen."""
+
+    component = "DestinationHeader"
+
+    class Meta:
+        icon = "title"
+        label = "Destination header"
+        group = "Page headers"
+
+
+class DestinationOverviewBlock(SectionBlock):
+    """Destination story, highlights, season and feature image screen."""
+
+    component = "DestinationOverview"
+
+    class Meta:
+        icon = "image"
+        label = "Destination overview"
+        group = "Destinations & experiences"
+
+
+class DestinationPackagesBlock(SectionBlock):
+    """Packages available for the current destination."""
+
+    component = "DestinationPackages"
+
+    class Meta:
+        icon = "list-ul"
+        label = "Destination packages"
+        group = "Packages"
+
+
 class PackageDetailBlock(SectionBlock):
     """→ `PackageDetail.tsx`; data is chosen by this page block."""
 
@@ -563,6 +596,52 @@ class PackageDetailBlock(SectionBlock):
         icon = "doc-full"
         label = "Package detail"
         group = "Page templates"
+
+
+class PackageHeaderBlock(SectionBlock):
+    component = "PackageHeader"
+
+    class Meta:
+        icon = "title"
+        label = "Package header"
+        group = "Page headers"
+
+
+class PackageOverviewBlock(SectionBlock):
+    component = "PackageOverview"
+
+    class Meta:
+        icon = "image"
+        label = "Package overview & gallery"
+        group = "Packages"
+
+
+class PackageBookingBlock(SectionBlock):
+    component = "PackageBooking"
+    reserve_href = blocks.CharBlock(required=False, max_length=255)
+
+    class Meta:
+        icon = "calendar"
+        label = "Inclusions & booking"
+        group = "Actions & forms"
+
+
+class PackageItineraryBlock(SectionBlock):
+    component = "PackageItinerary"
+
+    class Meta:
+        icon = "list-ol"
+        label = "Package itinerary"
+        group = "Packages"
+
+
+class PackageReviewsBlock(SectionBlock):
+    component = "PackageReviewsSection"
+
+    class Meta:
+        icon = "star"
+        label = "Package reviews"
+        group = "Trust & information"
 
 
 class FeatureItemBlock(blocks.StructBlock):
@@ -762,6 +841,41 @@ class BlogListingBlock(SectionBlock):
     class Meta:
         icon = "list-ul"
         label = "Blog listing"
+        group = "Content & media"
+
+
+class BlogArticleHeaderBlock(SectionBlock):
+    """The current post's image, title, category and author byline."""
+
+    component = "ArticleHero"
+
+    class Meta:
+        icon = "title"
+        label = "Article header"
+        group = "Page headers"
+
+
+class BlogArticleBodyBlock(SectionBlock):
+    """The current post's continuous ``article_body`` reading experience."""
+
+    component = "ArticleBody"
+
+    class Meta:
+        icon = "doc-full"
+        label = "Article content"
+        group = "Content & media"
+
+
+class BlogRelatedStoriesBlock(SectionBlock):
+    """Recent stories shown after the current article."""
+
+    component = "RelatedStories"
+    heading = blocks.CharBlock(default="Keep reading", max_length=120)
+    count = blocks.IntegerBlock(default=3, min_value=1, max_value=6)
+
+    class Meta:
+        icon = "list-ul"
+        label = "Related stories"
         group = "Content & media"
 
 

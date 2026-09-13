@@ -27,7 +27,21 @@ from apps.catalog.models import (
     PackageRatingSummary,
     Testimonial,
 )
-from apps.cms.models import BlogIndexPage, BlogPostPage, HomePage, PackageIndexPage, StandardPage
+from apps.cms.models import (
+    BlogIndexPage,
+    BlogPostPage,
+    CheckoutPage,
+    ContactPage,
+    DestinationDetailPage,
+    DestinationIndexPage,
+    EnquiryPage,
+    HomePage,
+    PackageIndexPage,
+    PackageDetailPage,
+    PackageFolderPage,
+    PaymentSuccessPage,
+    PrivacyPage,
+)
 from apps.core.models import CustomImage
 from apps.navigation.models import (
     BrandSettings,
@@ -288,6 +302,14 @@ class Command(BaseCommand):
             "Departure and onward travel",
         ]
         for package in Package.objects.all():
+            if not package.group_pricing.exists():
+                from apps.catalog.models import PackageGroupPrice
+                from apps.catalog.pricing import default_group_prices
+
+                PackageGroupPrice.objects.bulk_create(
+                    PackageGroupPrice(package=package, **tier)
+                    for tier in default_group_prices(package.price)
+                )
             for order, title in enumerate(itinerary_titles, start=1):
                 day_label = f"Day {order}"
                 day = PackageItineraryDay.objects.filter(package=package, day_label=day_label).first()
@@ -772,7 +794,7 @@ class Command(BaseCommand):
         )
 
         upsert(
-            StandardPage,
+            DestinationIndexPage,
             "Destinations",
             "destinations",
             [
@@ -804,7 +826,7 @@ class Command(BaseCommand):
         )
 
         upsert(
-            StandardPage,
+            ContactPage,
             "Contact Us",
             "contact",
             [
@@ -843,7 +865,7 @@ class Command(BaseCommand):
         )
 
         upsert(
-            StandardPage,
+            PrivacyPage,
             "Privacy Policy",
             "privacy",
             [
@@ -860,11 +882,11 @@ class Command(BaseCommand):
             intro="How Lumora Treks handles your personal information.",
         )
 
-        upsert(StandardPage, "Enquiry", "enquiry", [{"type": "package_enquiry", "value": {"package": None, "settings": self.settings("enquiry")}}])
-        checkout = upsert(StandardPage, "Checkout", "checkout", [{"type": "checkout", "value": {"settings": self.settings("checkout")}}])
-        success = checkout.get_children().type(StandardPage).filter(slug="success").first()
+        upsert(EnquiryPage, "Enquiry", "enquiry", [{"type": "package_enquiry", "value": {"package": None, "settings": self.settings("enquiry")}}])
+        checkout = upsert(CheckoutPage, "Checkout", "checkout", [{"type": "checkout", "value": {"settings": self.settings("checkout")}}])
+        success = checkout.get_children().type(PaymentSuccessPage).filter(slug="success").first()
         if not success:
-            success = StandardPage(title="Payment Success", slug="success")
+            success = PaymentSuccessPage(title="Payment Success", slug="success")
             checkout.add_child(instance=success)
         else:
             success = success.specific  # `.first()` returns a base Page; need `.body`
@@ -875,15 +897,15 @@ class Command(BaseCommand):
         # Dynamic catalogue URLs are real Wagtail subpages too. Their detail
         # block owns the selected snippet, so each page can be extended or
         # rearranged independently in the editor.
-        destinations_index = home.get_children().type(StandardPage).get(slug="destinations").specific
+        destinations_index = home.get_children().type(DestinationIndexPage).get(slug="destinations").specific
         packages_index = home.get_children().type(PackageIndexPage).get(slug="packages").specific
 
-        def child(parent, slug, title, body):
-            page = parent.get_children().type(StandardPage).filter(slug=slug).first()
+        def child(parent, page_class, slug, title, body, **fields):
+            page = parent.get_children().type(page_class).filter(slug=slug).first()
             if page:
                 page = page.specific
             else:
-                page = StandardPage(title=title, slug=slug)
+                page = page_class(title=title, slug=slug, **fields)
                 parent.add_child(instance=page)
             # Empty package folders are structural only; never publish a new
             # revision for them on every seed run.
@@ -895,28 +917,35 @@ class Command(BaseCommand):
         for destination in Destination.objects.all():
             detail_page = child(
                 destinations_index,
+                DestinationDetailPage,
                 destination.slug,
                 destination.title,
-                [{"type": "destination_detail", "value": {
-                    "destination": destination.pk,
-                    "settings": self.settings("destination-detail"),
-                }}],
+                [
+                    {"type": "destination_header", "value": {"settings": self.settings("destination-header", spacing="none")}},
+                    {"type": "destination_overview", "value": {"settings": self.settings("destination-overview", spacing="none")}},
+                    {"type": "destination_packages", "value": {"settings": self.settings("destination-packages", spacing="none")}},
+                ],
+                destination=destination,
             )
             if destination.link_page_id != detail_page.pk:
                 destination.link_page = detail_page
                 destination.save(update_fields=["link_page"])
 
         for package in Package.objects.all():
-            container = child(packages_index, package.slug, package.title, [])
+            container = child(packages_index, PackageFolderPage, package.slug, package.title, [])
             child(
                 container,
+                PackageDetailPage,
                 package.public_code,
                 package.title,
-                [{"type": "package_detail", "value": {
-                    "package": package.pk,
-                    "reserve_href": f"/enquiry?package={package.slug}",
-                    "settings": self.settings("package-detail"),
-                }}],
+                [
+                    {"type": "package_header", "value": {"settings": self.settings("package-header", spacing="none")}},
+                    {"type": "package_overview", "value": {"settings": self.settings("package-overview", spacing="none")}},
+                    {"type": "package_booking", "value": {"reserve_href": f"/enquiry?package={package.slug}", "settings": self.settings("package-booking", spacing="none")}},
+                    {"type": "package_itinerary", "value": {"settings": self.settings("package-itinerary", spacing="none")}},
+                    {"type": "package_reviews", "value": {"settings": self.settings("package-reviews", spacing="none")}},
+                ],
+                package=package,
             )
 
     # -------------------------------------------------------------- blog
@@ -1087,6 +1116,7 @@ class Command(BaseCommand):
             else:
                 post = BlogPostPage(title=title, slug=slug)
                 index.add_child(instance=post)
+            changed = False
             if self.reset or not post.article_body:
                 name, role = self.BLOG_AUTHORS[author_key]
                 post.excerpt = excerpt
@@ -1099,6 +1129,43 @@ class Command(BaseCommand):
                 post.author_avatar = self.image("avatar-1")
                 post.read_time_minutes = read
                 post.article_body = self.build_article_body(title)
+                changed = True
+            if self.reset or not post.body:
+                post.body = [
+                    {
+                        "type": "blog_article_header",
+                        "value": {"settings": self.settings("article-header", spacing="none", container="full")},
+                    },
+                    {
+                        "type": "blog_article_body",
+                        "value": {"settings": self.settings("article", spacing="none", container="full")},
+                    },
+                    {
+                        "type": "blog_related_stories",
+                        "value": {
+                            "heading": "Keep reading",
+                            "count": 3,
+                            "settings": self.settings("related-stories", spacing="none", container="full"),
+                        },
+                    },
+                    {
+                        "type": "cta_banner",
+                        "value": {
+                            "heading": "Create memories that stay with you long after the Journey Ends",
+                            "text": "",
+                            "background_image": self.pk("cta-bg"),
+                            "buttons": [{
+                                **self.empty_button(),
+                                "label": "Reserve Now",
+                                "link_type": "url",
+                                "url": "/enquiry",
+                            }],
+                            "settings": self.settings("article-cta", spacing="none", container="full"),
+                        },
+                    },
+                ]
+                changed = True
+            if changed:
                 post.save_revision().publish()
 
     # ------------------------------------------------------------- helpers

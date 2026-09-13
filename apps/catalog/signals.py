@@ -3,7 +3,7 @@
 When a Package is created, its customer-facing page must exist at
 `/packages/<slug>/<public_code>` before it can render on the site. That URL maps
 to a `PackageFolderPage` (slug = package slug) holding a `PackageDetailPage`
-(slug = package public_code) whose body is a single `package_detail` block.
+(slug = package public_code) whose body starts with five focused package sections.
 
 Rather than require an editor to hand-build that page tree (or re-run a seed
 command), this handler creates and publishes it automatically on save. It runs
@@ -22,11 +22,11 @@ from apps.catalog.models import Package
 logger = logging.getLogger(__name__)
 
 
-def _default_block_settings():
+def _default_block_settings(anchor_id):
     return {
-        "anchor_id": "",
+        "anchor_id": anchor_id,
         "background": "default",
-        "spacing": "md",
+        "spacing": "none",
         "container": "default",
         "hidden": False,
     }
@@ -80,13 +80,28 @@ def _ensure_detail_page(package):
         package=package,
         body=[
             {
-                "type": "package_detail",
+                "type": "package_header",
+                "value": {"settings": _default_block_settings("package-header")},
+            },
+            {
+                "type": "package_overview",
+                "value": {"settings": _default_block_settings("package-overview")},
+            },
+            {
+                "type": "package_booking",
                 "value": {
-                    "package": package.pk,
                     "reserve_href": f"/enquiry?package={package.slug}",
-                    "settings": _default_block_settings(),
+                    "settings": _default_block_settings("package-booking"),
                 },
-            }
+            },
+            {
+                "type": "package_itinerary",
+                "value": {"settings": _default_block_settings("package-itinerary")},
+            },
+            {
+                "type": "package_reviews",
+                "value": {"settings": _default_block_settings("package-reviews")},
+            },
         ],
     )
     folder.add_child(instance=detail)
