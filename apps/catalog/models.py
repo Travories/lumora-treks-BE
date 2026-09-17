@@ -101,8 +101,12 @@ class Destination(index.Indexed, SlugMixin, models.Model):
 
     @property
     def href(self):
+        # Point at the public Next.js route, NOT link_page.get_url(): Wagtail
+        # serves its own pages under /cms-preview/ (see lumora/urls.py), so
+        # get_url() returns a preview path that 404s on the frontend. Mirror
+        # Package.public_url, which already returns a clean frontend route.
         if self.link_page_id:
-            return self.link_page.get_url() or f"/{self.link_page.slug}/"
+            return f"/destinations/{self.slug}"
         return self.external_url or None
 
 
