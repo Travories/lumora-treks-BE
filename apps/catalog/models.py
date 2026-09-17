@@ -208,6 +208,12 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 
     CATEGORY_CHOICES = [
         ("Trekking", "Trekking"),
+        ("Trail Run", "Trail Run"),
+        ("Hiking", "Hiking"),
+        ("Day Excursions", "Day Excursions"),
+        ("Religious Tour", "Religious Tour"),
+        ("Nepal's Wild Life", "Nepal's Wild Life"),
+        ("6000m Peak Climbing", "6000m Peak Climbing"),
         ("Sightseeing", "Sightseeing"),
         ("Paragliding", "Paragliding"),
     ]

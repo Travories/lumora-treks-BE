@@ -764,7 +764,17 @@ class Command(BaseCommand):
                     "type": "package_listing",
                     "value": {
                         "heading": "Popular Packages",
-                        "categories": ["Trekking", "Sightseeing", "Paragliding"],
+                        "categories": [
+                            "Trekking",
+                            "Trail Run",
+                            "Hiking",
+                            "Day Excursions",
+                            "Religious Tour",
+                            "Nepal's Wild Life",
+                            "6000m Peak Climbing",
+                            "Sightseeing",
+                            "Paragliding",
+                        ],
                         "page_size": 6,
                         "default_category": "Trekking",
                         "show_filters": True,
