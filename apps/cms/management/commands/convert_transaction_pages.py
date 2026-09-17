@@ -15,6 +15,7 @@ from apps.cms.models import (
     CheckoutPage,
     ContactPage,
     EnquiryPage,
+    HomePage,
     PaymentSuccessPage,
     PrivacyPage,
     StandardPage,
@@ -29,7 +30,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         apply = options["apply"]
-        home = Page.objects.filter(slug="home").first()
+        # Resolve home by type, not slug: production's home slug is "home-real",
+        # so a hardcoded slug="home" lookup finds nothing and converts nothing.
+        # This mirrors how seed_lumora locates the home page.
+        home = HomePage.objects.first()
         if not home:
             self.stderr.write("Home page is missing; nothing converted.")
             return
