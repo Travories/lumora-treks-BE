@@ -1288,6 +1288,7 @@ class Command(BaseCommand):
                         "heading": "",
                         "links": [
                             self.link("Contact Us", "url", url="/contact"),
+                            self.link("FAQs", "url", url="/contact#faq"),
                             self.link("Privacy Policy", "url", url="/privacy"),
                             self.link("Terms & Conditions", "url", url="/terms"),
                             self.link("Login to Admin Portal", "url", url="/admin"),
