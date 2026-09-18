@@ -1297,10 +1297,9 @@ class Command(BaseCommand):
                 },
             ]
             footer.socials = [
-                {"type": "social", "value": {"platform": "Facebook", "icon": "mdi:facebook", "url": "#"}},
-                {"type": "social", "value": {"platform": "Instagram", "icon": "mdi:instagram", "url": "#"}},
-                {"type": "social", "value": {"platform": "X", "icon": "prime:twitter", "url": "#"}},
-                {"type": "social", "value": {"platform": "WhatsApp", "icon": "mdi:whatsapp", "url": "#"}},
+                {"type": "social", "value": {"platform": "Facebook", "icon": "mdi:facebook", "url": "https://www.facebook.com/LumoraTreks"}},
+                {"type": "social", "value": {"platform": "Instagram", "icon": "mdi:instagram", "url": "https://www.instagram.com/lumoratreks/"}},
+                {"type": "social", "value": {"platform": "WhatsApp", "icon": "mdi:whatsapp", "url": "https://wa.me/9779847259352"}},
             ]
             footer.newsletter_enabled = True
             footer.newsletter_heading = "Newsletter"
