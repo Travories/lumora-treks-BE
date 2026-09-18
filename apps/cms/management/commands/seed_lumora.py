@@ -696,8 +696,8 @@ class Command(BaseCommand):
                     "side_card_button": {
                         **self.empty_button(),
                         "label": "Contact Us",
-                        "link_type": "anchor",
-                        "anchor": "contact",
+                        "link_type": "url",
+                        "url": "/contact",
                         "style": "secondary",
                         "size": "md",
                     },
