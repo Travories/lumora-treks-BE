@@ -163,7 +163,7 @@ class StandardPage(BasePage):
 class ContactPage(BasePage):
     """The public contact route and its configurable enquiry form."""
 
-    body = page_body("page_hero", "lead_form", "rich_text", "faq", "cta_banner")
+    body = page_body("contact_hero", "contact_form", "why_choose_us", "authentic_experiences", "faq")
     intro = models.TextField(blank=True)
 
     content_panels = Page.content_panels + [

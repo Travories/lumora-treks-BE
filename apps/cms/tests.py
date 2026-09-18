@@ -40,7 +40,7 @@ PAGE_TYPES_WITH_SECTIONS = (
 EXPECTED_PAGE_BLOCKS = {
     HomePage: {"hero", "intro_stats", "popular_packages", "experience_showcase", "why_choose_us", "bento_grid", "authentic_experiences", "faq", "cta_banner"},
     StandardPage: {"page_hero", "header_card", "destinations_grid", "lead_form", "rich_text", "gallery", "video", "embed", "faq", "cta_banner", "spacer"},
-    ContactPage: {"page_hero", "lead_form", "rich_text", "faq", "cta_banner"},
+    ContactPage: {"contact_hero", "contact_form", "why_choose_us", "authentic_experiences", "faq"},
     PrivacyPage: {"page_hero", "rich_text", "faq", "cta_banner"},
     DestinationIndexPage: {"page_hero", "destinations_grid", "experience_showcase", "cta_banner"},
     DestinationDetailPage: {"destination_header", "destination_overview", "destination_packages", "cta_banner"},
