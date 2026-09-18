@@ -160,7 +160,23 @@ class LinkBlock(blocks.StructBlock):
     def _resolve_href(value):
         link_type = value.get("link_type")
         if link_type == "page" and value.get("page"):
-            return value["page"].get_url() or f"/{value['page'].slug}/"
+            from urllib.parse import urlparse
+
+            raw = value["page"].get_url() or f"/{value['page'].slug}/"
+            # Wagtail serves its own pages under /cms-preview/ (see lumora/urls.py)
+            # and get_url() may return an absolute preview URL. The public Next.js
+            # frontend mirrors the same paths WITHOUT that prefix, so drop the host
+            # and strip the prefix to get a clean frontend route (mirrors
+            # catalog.Destination.href / Package.public_url).
+            path = urlparse(raw).path or raw
+            prefix = "/cms-preview"
+            if path.startswith(prefix):
+                path = path[len(prefix):] or "/"
+            # Match the frontend's no-trailing-slash convention (Next.js default),
+            # so links don't incur a redirect hop.
+            if len(path) > 1:
+                path = path.rstrip("/")
+            return path
         if link_type == "url":
             return value.get("url") or None
         if link_type == "anchor" and value.get("anchor"):

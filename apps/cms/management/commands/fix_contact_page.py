@@ -101,7 +101,8 @@ class Command(BaseCommand):
                     "destinations": [],
                     "submit_label": "Reserve Now",
                     "settings": _settings("contact-form"),
-                    "form_key": "contact",
+                    # NB: `form_key` is NOT a CMS field on ContactFormBlock — the
+                    # frontend hardcodes form_key="contact" in ContactForm.tsx.
                 },
             )
         )
