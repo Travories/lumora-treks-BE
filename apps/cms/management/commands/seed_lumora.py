@@ -41,6 +41,7 @@ from apps.cms.models import (
     PackageFolderPage,
     PaymentSuccessPage,
     PrivacyPage,
+    StandardPage,
 )
 from apps.core.models import CustomImage
 from apps.navigation.models import (
@@ -890,6 +891,24 @@ class Command(BaseCommand):
                 }
             ],
             intro="How Lumora Treks handles your personal information.",
+        )
+
+        upsert(
+            StandardPage,
+            "Terms & Conditions",
+            "terms",
+            [
+                {
+                    "type": "rich_text",
+                    "value": {
+                        "heading": "Terms & Conditions",
+                        "body": "<h2>Booking and payment</h2><p>By booking a trip with Lumora Treks you agree to the deposit, balance, and payment terms communicated at the time of booking.</p><h2>Cancellations and changes</h2><p>Cancellation and amendment charges vary by trip and season; the applicable terms are shared before you confirm.</p><h2>Travel insurance and responsibility</h2><p>Travellers are responsible for appropriate insurance, valid documentation, and following guide instructions during the trip.</p><h2>Liability</h2><p>Lumora Treks is not liable for delays or changes caused by weather, force majeure, or circumstances beyond our reasonable control.</p>",
+                        "width": "narrow",
+                        "settings": self.settings("terms"),
+                    },
+                }
+            ],
+            intro="The terms that apply to trips booked with Lumora Treks.",
         )
 
         upsert(EnquiryPage, "Enquiry", "enquiry", [{"type": "package_enquiry", "value": {"package": None, "settings": self.settings("enquiry")}}])
