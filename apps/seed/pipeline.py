@@ -18,12 +18,14 @@ import os
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.core.files.images import ImageFile
 from django.core.management import call_command
 from django.db import connection, transaction
 from wagtail import blocks
 from wagtail.documents import get_document_model
+from wagtail.hooks import search_for_hooks
 from wagtail.models import Page, Site
 
 from apps.catalog.models import (
@@ -155,6 +157,18 @@ def check_stream(stream_block, raw, path):
         _check_value(child, item["value"], f"{path}[{index}].{item['type']}")
 
 
+def _block_errors(err, path):
+    """Flatten a (nested) StreamField ValidationError into "path: message" lines."""
+    children = getattr(err, "block_errors", None)
+    if children:
+        items = children.items() if isinstance(children, dict) else enumerate(children)
+        for key, child in items:
+            if child is not None:
+                yield from _block_errors(child, f"{path}.{key}")
+        return
+    yield f"{path}: {' '.join(getattr(err, 'messages', [str(err)]))}"
+
+
 def _check_value(block, value, path):
     if isinstance(block, blocks.StructBlock) and isinstance(value, dict):
         unknown = set(value) - set(block.child_blocks)
@@ -202,6 +216,8 @@ class Seeder:
     # Steps ---------------------------------------------------------------
 
     def run(self):
+        # Register snippet choosers etc., so blocks validate exactly as in the admin.
+        search_for_hooks()
         self.seed_images()
         self.seed_destinations()
         self.seed_packages()
@@ -235,7 +251,8 @@ class Seeder:
 
     def seed_destinations(self):
         for order, data in enumerate(catalog.DESTINATIONS):
-            self.destinations[data["slug"]] = Destination.objects.create(
+            self.destinations[data["slug"]] = self._create(
+                Destination,
                 slug=data["slug"],
                 title=data["title"],
                 subtitle=data["subtitle"],
@@ -252,7 +269,8 @@ class Seeder:
 
     def seed_packages(self):
         for order, data in enumerate(catalog.PACKAGES):
-            package = Package.objects.create(
+            package = self._create(
+                Package,
                 slug=data["slug"],
                 public_code=data["public_code"],
                 title=data["title"],
@@ -313,7 +331,8 @@ class Seeder:
 
     def seed_testimonials(self):
         for order, data in enumerate(catalog.TESTIMONIALS):
-            Testimonial.objects.create(
+            self._create(
+                Testimonial,
                 author_name=data["author_name"],
                 author_role=data["author_role"],
                 quote=data["quote"],
@@ -331,7 +350,9 @@ class Seeder:
             placeholder.delete()
         home = self.add_page(root, HomePage, body=pages.home_body(self), **pages.HOME)
         Site.objects.all().delete()
-        Site.objects.create(hostname="localhost", port=80, root_page=home, is_default_site=True, site_name="Lumora Treks")
+        Site.objects.create(
+            hostname="localhost", port=80, root_page=home, is_default_site=True, site_name="Lumora Treks"
+        )
         return home
 
     def seed_site_pages(self, home):
@@ -394,15 +415,40 @@ class Seeder:
                 if isinstance(value, list):
                     value = self.checked(model, field, value)
                 setattr(instance, field, value)
-            instance.save()
+            self.validated(instance).save()
         ThemeSettings.load()
         IntegrationSettings.load()
 
     # Helpers ---------------------------------------------------------------
 
     def checked(self, model, field_name, raw):
-        check_stream(model._meta.get_field(field_name).stream_block, raw, f"{model.__name__}.{field_name}")
+        """Validate a StreamField value exactly as the admin form will on save.
+
+        Seeded content must be savable unchanged: a required field left empty
+        or text over its character limit fails here, not in an editor's face.
+        """
+        path = f"{model.__name__}.{field_name}"
+        stream_block = model._meta.get_field(field_name).stream_block
+        check_stream(stream_block, raw, path)
+        try:
+            stream_block.clean(stream_block.to_python(raw))
+        except ValidationError as err:
+            raise SeedError(f"{path} would not save in the admin: {'; '.join(_block_errors(err, path))}") from err
         return raw
+
+    def _create(self, model, **fields):
+        instance = self.validated(model(**fields))
+        instance.save()
+        return instance
+
+    @staticmethod
+    def validated(instance, exclude=()):
+        """Run the model's field validation (required fields, character limits) before saving."""
+        try:
+            instance.full_clean(exclude=list(exclude), validate_unique=False)
+        except ValidationError as err:
+            raise SeedError(f"{type(instance).__name__} {instance} is invalid: {err.message_dict}") from err
+        return instance
 
     def add_page(self, parent, page_class, body=None, **fields):
         page = page_class(**fields)

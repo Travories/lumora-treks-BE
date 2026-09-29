@@ -125,6 +125,15 @@ class SeedValidationTests(TestCase):
         with self.assertRaisesMessage(pipeline.SeedError, "'lead_form' is not allowed here"):
             pipeline.check_stream(stream_block, [{"type": "lead_form", "value": {}}], "body")
 
+    def test_content_the_admin_would_reject_fails_the_seed(self):
+        from apps.navigation.models import FooterSettings
+
+        seeder = pipeline.Seeder(quiet)
+        too_long = [{"type": "column", "value": {"heading": "x" * 21, "links": []}}]
+        with self.assertRaisesMessage(pipeline.SeedError, "would not save in the admin"):
+            seeder.checked(FooterSettings, "columns", too_long)
+        seeder.checked(FooterSettings, "columns", [{"type": "column", "value": {"heading": "", "links": []}}])
+
     def test_unknown_references_fail_loudly(self):
         with self.assertRaisesMessage(pipeline.SeedError, "Unknown image 'nope'"):
             pipeline.Seeder(quiet).image("nope")

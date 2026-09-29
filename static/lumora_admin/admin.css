@@ -161,3 +161,217 @@
   color: var(--w-color-critical-200);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+ * Lumora guide (Help › Lumora guide)
+ * ------------------------------------------------------------------------ */
+.lumora-guide {
+  max-width: 76rem;
+  padding-bottom: 4rem;
+}
+
+.lumora-guide__lead {
+  max-width: 48rem;
+  margin: 0 0 2rem;
+  font-size: 1.125rem;
+  color: var(--w-color-text-meta);
+}
+
+.lumora-guide__toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0 0 3.5rem;
+  padding: 0;
+}
+
+.lumora-guide__toc-card {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  height: 100%;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--w-color-border-furniture);
+  border-radius: 0.5rem;
+  color: var(--w-color-text-label);
+  text-decoration: none;
+}
+
+.lumora-guide__toc-card:hover,
+.lumora-guide__toc-card:focus-visible {
+  border-color: var(--w-color-secondary);
+}
+
+.lumora-guide__toc-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  color: var(--w-color-secondary);
+}
+
+.lumora-guide__toc-title {
+  display: block;
+  font-weight: 600;
+}
+
+.lumora-guide__toc-summary {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: var(--w-color-text-meta);
+}
+
+.lumora-guide__section {
+  scroll-margin-top: 5rem;
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--w-color-border-furniture);
+}
+
+.lumora-guide__section-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.lumora-guide__section-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--w-color-secondary);
+}
+
+.lumora-guide__section-title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.lumora-guide__intro {
+  max-width: 48rem;
+  margin: 0.75rem 0 0;
+  color: var(--w-color-text-meta);
+}
+
+.lumora-guide__body {
+  display: grid;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 64em) {
+  .lumora-guide__body {
+    grid-template-columns: minmax(18rem, 5fr) 7fr;
+    align-items: start;
+  }
+
+  .lumora-guide__body--text {
+    grid-template-columns: minmax(0, 48rem);
+  }
+}
+
+.lumora-guide__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: guide-step;
+}
+
+.lumora-guide__steps li {
+  position: relative;
+  margin-bottom: 1rem;
+  padding-left: 2.5rem;
+  line-height: 1.55;
+  counter-increment: guide-step;
+}
+
+.lumora-guide__steps li::before {
+  content: counter(guide-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--w-color-secondary);
+  color: var(--w-color-white);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.lumora-guide__points {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.lumora-guide__points dt {
+  font-weight: 600;
+}
+
+.lumora-guide__points dd {
+  margin: 0.125rem 0 0;
+  color: var(--w-color-text-meta);
+}
+
+.lumora-guide__tip {
+  display: flex;
+  gap: 0.625rem;
+  margin: 1.25rem 0 0;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--w-color-surface-field-inactive, var(--w-color-surface-menus));
+  font-size: 0.9375rem;
+}
+
+.lumora-guide__tip-icon {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  color: var(--w-color-secondary);
+}
+
+.lumora-guide__media {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.lumora-guide__figure {
+  margin: 0;
+}
+
+.lumora-guide__figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--w-color-border-furniture);
+  border-radius: 0.5rem;
+}
+
+.lumora-guide__figure figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--w-color-text-meta);
+}
+
+.lumora-guide__badge {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.lumora-guide__badge--website {
+  background: var(--lumora-brand);
+  color: #10240a;
+}
+
+.lumora-guide__badge--admin {
+  background: var(--w-color-primary);
+  color: #fff;
+}

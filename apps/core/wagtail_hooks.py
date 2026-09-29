@@ -14,10 +14,10 @@ since every snippet type now has a named entry of its own.
 """
 
 from django.templatetags.static import static
-from django.urls import reverse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from wagtail import hooks
-from wagtail.admin.menu import Menu, SubmenuMenuItem
+from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
 from wagtail.admin.site_summary import SummaryItem
 from wagtail.admin.ui.components import Component
 from wagtail.admin.ui.tables import Column
@@ -26,6 +26,7 @@ from wagtail.images.wagtail_hooks import ImagesMenuItem
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
+from apps.core.guide import GuideView
 from apps.core.models import Video
 
 # ---------------------------------------------------------------------------
@@ -88,9 +89,28 @@ def organise_main_menu(request, menu_items):
             item.label = "Administration"
 
 
+# ---------------------------------------------------------------------------
+# Help: the Lumora guide replaces Wagtail's generic editor guide
+# ---------------------------------------------------------------------------
+
+
+@hooks.register("register_admin_urls")
+def register_guide_url():
+    return [path("guide/", GuideView.as_view(), name="lumora_guide")]
+
+
+@hooks.register("register_help_menu_item")
+def register_guide_menu_item():
+    return MenuItem("Lumora guide", reverse("lumora_guide"), name="lumora-guide", icon_name="doc-full", order=900)
+
+
 @hooks.register("construct_help_menu")
-def remove_wagtail_release_notes(request, menu_items):
-    menu_items[:] = [item for item in menu_items if not item.name.startswith("whats-new-in-wagtail")]
+def keep_only_lumora_help(request, menu_items):
+    menu_items[:] = [
+        item
+        for item in menu_items
+        if item.name != "editor-guide" and not item.name.startswith("whats-new-in-wagtail")
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -191,5 +211,5 @@ def add_quick_actions_panel(request, panels):
     if leads_url:
         actions.append(("Review new leads", "mail", f"{leads_url}?status=new"))
 
-    if actions:
-        panels.append(QuickActionsPanel(actions))
+    actions.append(("Read the Lumora guide", "help", reverse("lumora_guide")))
+    panels.append(QuickActionsPanel(actions))

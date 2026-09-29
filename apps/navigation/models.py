@@ -26,7 +26,9 @@ class NavItemBlock(LinkBlock):
 
 
 class FooterColumnBlock(blocks.StructBlock):
-    heading = blocks.CharBlock(max_length=80)
+    heading = blocks.CharBlock(
+        required=False, max_length=20, help_text="Optional — leave empty for a plain list of links."
+    )
     links = blocks.ListBlock(LinkBlock(), label="Links")
 
     class Meta:

@@ -103,6 +103,24 @@ class LumoraAdminTests(TestCase):
         self.assertContains(response, "Write a blog post")
         self.assertContains(response, "Add a package")
 
+    def test_help_links_to_the_lumora_guide_instead_of_the_wagtail_guide(self):
+        html = self.client.get("/admin/").content.decode()
+        self.assertIn("Lumora guide", html)
+        self.assertIn("/admin/guide/", html)
+        self.assertNotIn("guide.wagtail.org", html)
+
+    def test_lumora_guide_shows_every_section_with_its_media(self):
+        from django.contrib.staticfiles import finders
+
+        from apps.core.guide import GUIDE
+
+        response = self.client.get("/admin/guide/")
+        for section in GUIDE:
+            self.assertContains(response, f'id="{section["id"]}"')
+            for item in section.get("media", []):
+                self.assertContains(response, f"lumora_admin/guide/{item['file']}")
+                self.assertTrue(finders.find(f"lumora_admin/guide/{item['file']}"), item["file"])
+
     # -- Editorial cross-links -----------------------------------------------
 
     def test_package_edit_links_to_its_page_destination_and_leads(self):

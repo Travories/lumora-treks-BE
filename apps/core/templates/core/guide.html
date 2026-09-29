@@ -1,0 +1,76 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load static wagtailadmin_tags %}
+
+{% block main_content %}
+<div class="lumora-guide">
+    <p class="lumora-guide__lead">
+        How to keep the Lumora Treks website up to date. Each section shows the part of the website you are
+        changing and how to change it here.
+    </p>
+
+    <nav aria-label="Guide sections">
+        <ul class="lumora-guide__toc">
+            {% for section in sections %}
+                <li>
+                    <a class="lumora-guide__toc-card" href="#{{ section.id }}">
+                        {% icon name=section.icon classname="lumora-guide__toc-icon" %}
+                        <span>
+                            <span class="lumora-guide__toc-title">{{ section.title }}</span>
+                            <span class="lumora-guide__toc-summary">{{ section.summary }}</span>
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    {% for section in sections %}
+        <section id="{{ section.id }}" class="lumora-guide__section" aria-labelledby="{{ section.id }}-title">
+            <header class="lumora-guide__section-header">
+                {% icon name=section.icon classname="lumora-guide__section-icon" %}
+                <h2 id="{{ section.id }}-title" class="lumora-guide__section-title">{{ section.title }}</h2>
+            </header>
+            {% if section.intro %}<p class="lumora-guide__intro">{{ section.intro }}</p>{% endif %}
+
+            <div class="lumora-guide__body{% if not section.media %} lumora-guide__body--text{% endif %}">
+                <div class="lumora-guide__text">
+                    {% if section.steps %}
+                        <ol class="lumora-guide__steps">
+                            {% for step in section.steps %}<li>{{ step|safe }}</li>{% endfor %}
+                        </ol>
+                    {% endif %}
+                    {% if section.points %}
+                        <dl class="lumora-guide__points">
+                            {% for term, description in section.points %}
+                                <div>
+                                    <dt>{{ term }}</dt>
+                                    <dd>{{ description }}</dd>
+                                </div>
+                            {% endfor %}
+                        </dl>
+                    {% endif %}
+                    {% if section.tip %}
+                        <p class="lumora-guide__tip">{% icon name="info-circle" classname="lumora-guide__tip-icon" %}<span>{{ section.tip|safe }}</span></p>
+                    {% endif %}
+                </div>
+
+                {% if section.media %}
+                    <div class="lumora-guide__media">
+                        {% for item in section.media %}
+                            <figure class="lumora-guide__figure">
+                                <span class="lumora-guide__badge lumora-guide__badge--{{ item.kind }}">
+                                    {% if item.kind == "website" %}On the website{% else %}In Lumora Admin{% endif %}
+                                </span>
+                                <a href="{% static 'lumora_admin/guide/'|add:item.file %}" target="_blank" rel="noopener">
+                                    <img src="{% static 'lumora_admin/guide/'|add:item.file %}" alt="{{ item.caption }}" loading="lazy">
+                                </a>
+                                <figcaption>{{ item.caption }}</figcaption>
+                            </figure>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    {% endfor %}
+</div>
+{% endblock %}

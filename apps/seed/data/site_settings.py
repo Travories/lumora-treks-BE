@@ -49,7 +49,6 @@ FOOTER = {
                     link("FAQs", "/contact#faq"),
                     link("Privacy Policy", "/privacy"),
                     link("Terms & Conditions", "/terms"),
-                    link("Login to Admin Portal", "/admin"),
                 ],
             },
         }
