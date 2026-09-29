@@ -27,6 +27,7 @@ def serialize_destination(destination, detail=False):
         "highlights": [line.strip() for line in destination.highlights.splitlines() if line.strip()],
         "image": serialize_image(destination.image),
         "region": destination.region,
+        "best_season": destination.best_season,
         "layout": destination.default_layout,
         "href": destination.href or f"/destinations/{destination.slug}",
         "is_featured": destination.is_featured,
@@ -38,7 +39,6 @@ def serialize_destination(destination, detail=False):
         data.update(
             {
                 "description": destination.description,
-                "best_season": destination.best_season,
                 "highlights": [line.strip() for line in destination.highlights.splitlines() if line.strip()],
                 "packages": [serialize_package(package) for package in (packages if packages is not None else destination.packages.filter(is_active=True))],
             }
@@ -100,9 +100,6 @@ def serialize_package(package, detail=False):
             {
                 "description": package.description,
                 "max_altitude": package.max_altitude,
-                "accommodation": package.accommodation,
-                "meals": package.meals,
-                "transport": package.transport,
                 "destination": serialize_destination(package.destination),
                 "highlights": [
                     {"text": item.text, "icon": item.icon} for item in package.highlights.all()
@@ -112,6 +109,9 @@ def serialize_package(package, detail=False):
                         "day_label": day.day_label or f"Day {index}",
                         "title": day.title,
                         "description": day.description,
+                        "accommodation": day.accommodation,
+                        "meals": day.meals,
+                        "transport": day.transport,
                         "image": serialize_image(day.image, ["card"]),
                     }
                     for index, day in enumerate(package.itinerary.all(), start=1)

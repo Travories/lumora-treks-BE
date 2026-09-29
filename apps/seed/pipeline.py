@@ -266,9 +266,6 @@ class Seeder:
                 difficulty=data["difficulty"],
                 people_count=data["people_count"],
                 max_altitude=data["max_altitude"],
-                accommodation=data["accommodation"],
-                meals=data["meals"],
-                transport=data["transport"],
                 is_popular=data["is_popular"],
                 sort_order=order,
             )
@@ -277,8 +274,19 @@ class Seeder:
                 for index, text in enumerate(data["highlights"], start=1)
             )
             PackageItineraryDay.objects.bulk_create(
-                PackageItineraryDay(package=package, day_label=label, title=title, description=text, sort_order=index)
-                for index, (label, title, text) in enumerate(data["itinerary"], start=1)
+                PackageItineraryDay(
+                    package=package,
+                    day_label=label,
+                    title=title,
+                    description=text,
+                    accommodation=accommodation,
+                    meals=meals,
+                    transport=transport,
+                    sort_order=index,
+                )
+                for index, (label, title, text, accommodation, meals, transport) in enumerate(
+                    data["itinerary"], start=1
+                )
             )
             PackageIncludedItem.objects.bulk_create(
                 [

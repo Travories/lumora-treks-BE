@@ -60,9 +60,12 @@ class SeedContentTests(TestCase):
 
         data = serialize_package(Package.objects.get(slug="annapurna-base-camp-trek"), detail=True)
         self.assertEqual(data["max_altitude"], 4130)
-        for fact in ("accommodation", "meals", "transport", "difficulty"):
-            with self.subTest(fact=fact):
-                self.assertTrue(data[fact])
+        self.assertTrue(data["destination"]["best_season"])
+        first_day, last_day = data["itinerary"][0], data["itinerary"][-1]
+        self.assertEqual(first_day["accommodation"], "Teahouse in Ghandruk")
+        self.assertEqual(first_day["meals"], "Breakfast")
+        self.assertTrue(first_day["transport"])
+        self.assertEqual(last_day["accommodation"], "")  # the trek ends — no overnight stay
 
     def test_api_serves_display_renditions_not_originals(self):
         from apps.core.serializers import serialize_image

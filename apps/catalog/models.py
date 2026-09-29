@@ -131,8 +131,27 @@ class PackageItineraryDay(Orderable):
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
         help_text="Optional photo shown beside this day.",
     )
+    # Optional per day: the last day has no overnight stay, rest days no transport.
+    accommodation = LimitedCharField(
+        max_length=200, blank=True, ui_max_length=35, help_text='Where travellers sleep, e.g. "Teahouse in Ghandruk".'
+    )
+    meals = LimitedCharField(
+        max_length=200, blank=True, ui_max_length=30, help_text='Meals included this day, e.g. "Breakfast".'
+    )
+    transport = LimitedCharField(
+        max_length=200, blank=True, ui_max_length=50, help_text='How travellers get around, e.g. "On foot".'
+    )
 
-    panels = [FieldPanel("day_label"), FieldPanel("title"), FieldPanel("description"), FieldPanel("image")]
+    panels = [
+        FieldPanel("day_label"),
+        FieldPanel("title"),
+        FieldPanel("description"),
+        MultiFieldPanel(
+            [FieldPanel("accommodation"), FieldPanel("meals"), FieldPanel("transport")],
+            heading="Stay, meals & transport",
+        ),
+        FieldPanel("image"),
+    ]
 
     def __str__(self):
         return self.title
@@ -269,15 +288,6 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         blank=True,
         help_text="Highest point of the trip in metres, e.g. 4130. Leave empty for low-altitude tours.",
     )
-    accommodation = LimitedCharField(
-        max_length=200, help_text="Where travellers sleep, e.g. \"Mountain teahouses (twin share)\".",
-        ui_max_length=40,
-    )
-    meals = LimitedCharField(max_length=200, help_text="Which meals are covered, e.g. \"Daily breakfast\".", ui_max_length=60)
-    transport = LimitedCharField(
-        max_length=200, help_text="How travellers get around, e.g. \"Private jeep to the trailhead\".",
-        ui_max_length=50,
-    )
     destination = models.ForeignKey(
         "catalog.Destination", null=True, blank=True, on_delete=models.SET_NULL, related_name="packages"
     )
@@ -330,9 +340,6 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
                             FieldPanel("people_count"),
                             FieldPanel("difficulty"),
                             FieldPanel("max_altitude"),
-                            FieldPanel("accommodation"),
-                            FieldPanel("meals"),
-                            FieldPanel("transport"),
                         ],
                         heading="Trip facts",
                         help_text="Shown as Key Facts on the package page.",
