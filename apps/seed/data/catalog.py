@@ -289,9 +289,12 @@ TOUR_INCLUDED = [
 ]
 EXCLUDED = ["International flights", "Travel insurance", "Personal expenses", "Meals not listed"]
 
+# `public_code` is part of each package's URL (/packages/<slug>/<code>); fixed here so
+# reseeding never changes a live package address.
 PACKAGES = [
     {
         "slug": "annapurna-base-camp-trek",
+        "public_code": "v7rty",
         "title": "Annapurna Base Camp Trek",
         "category": "Trekking",
         "destination": "annapurna-region",
@@ -377,6 +380,7 @@ PACKAGES = [
     },
     {
         "slug": "poon-hill-sunrise-trek",
+        "public_code": "h8t10",
         "title": "Poon Hill Sunrise Trek",
         "category": "Trekking",
         "destination": "poon-hill",
@@ -438,6 +442,7 @@ PACKAGES = [
     },
     {
         "slug": "journey-to-fish-lake",
+        "public_code": "b44u5",
         "title": "Journey to Fish Lake",
         "category": "Hiking",
         "destination": "rara-lake",
@@ -503,6 +508,7 @@ PACKAGES = [
     },
     {
         "slug": "pokhara-kathmandu-tours",
+        "public_code": "pg32e",
         "title": "Pokhara & Kathmandu Tours",
         "category": "Sightseeing",
         "destination": "kathmandu-pokhara",
@@ -572,6 +578,7 @@ PACKAGES = [
     },
     {
         "slug": "abc-base-camp-trek",
+        "public_code": "9fmda",
         "title": "ABC Base Camp Trek",
         "category": "Trekking",
         "destination": "annapurna-region",

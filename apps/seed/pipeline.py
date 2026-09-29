@@ -254,6 +254,7 @@ class Seeder:
         for order, data in enumerate(catalog.PACKAGES):
             package = Package.objects.create(
                 slug=data["slug"],
+                public_code=data["public_code"],
                 title=data["title"],
                 category=data["category"],
                 destination=self._lookup(self.destinations, data["destination"], "destination"),

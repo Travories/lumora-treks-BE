@@ -101,6 +101,10 @@ class SeedContentTests(TestCase):
                 self.assertLessEqual(len(post.title), BlogPostPageForm.TITLE_MAX_LENGTH)
                 post.clean_fields(exclude=["path", "depth", "url_path", "draft_title", "slug", "hero_image", "author_avatar"])
 
+    def test_package_urls_are_stable_across_reseeds(self):
+        package = Package.objects.get(slug="annapurna-base-camp-trek")
+        self.assertEqual(package.public_url, "/packages/annapurna-base-camp-trek/v7rty")
+
     def test_home_is_the_site_root(self):
         site = Site.objects.get(is_default_site=True)
         self.assertIsInstance(site.root_page.specific, HomePage)
