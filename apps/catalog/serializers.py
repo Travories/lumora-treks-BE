@@ -99,6 +99,10 @@ def serialize_package(package, detail=False):
         data.update(
             {
                 "description": package.description,
+                "max_altitude": package.max_altitude,
+                "accommodation": package.accommodation,
+                "meals": package.meals,
+                "transport": package.transport,
                 "destination": serialize_destination(package.destination),
                 "highlights": [
                     {"text": item.text, "icon": item.icon} for item in package.highlights.all()

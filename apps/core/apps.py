@@ -16,6 +16,8 @@ class CoreConfig(AppConfig):
     verbose_name = "Core (media & shared blocks)"
 
     def ready(self):
+        from apps.core import signals  # noqa: F401
+
         if len(sys.argv) > 1 and sys.argv[1] in _SKIP_COMMANDS:
             return
         _log_connectivity()

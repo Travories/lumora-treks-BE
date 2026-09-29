@@ -6,6 +6,7 @@ Each `*_body(ref)` returns the page's StreamField in frontend render order.
 `ref.package(slug)` (all return primary keys).
 """
 
+from apps.seed.data import catalog
 from apps.seed.data.blocks import block, button, heading, link, reserve_cta, section
 
 HOME = {
@@ -18,6 +19,7 @@ HOME = {
     ),
 }
 
+# Every category the site knows (the Package.category choices, in order).
 PACKAGE_CATEGORIES = [
     "Trekking",
     "Trail Run",
@@ -29,6 +31,9 @@ PACKAGE_CATEGORIES = [
     "Sightseeing",
     "Paragliding",
 ]
+
+# The /packages tabs: only categories that have packages, so no tab opens empty.
+LISTING_CATEGORIES = [c for c in PACKAGE_CATEGORIES if any(p["category"] == c for p in catalog.PACKAGES)]
 
 FAQ_ITEMS = [
     {
@@ -325,16 +330,16 @@ def packages_index(ref):
                 image_width=565,
                 image_height=457,
                 show_search=True,
-                settings=section("hero"),
+                settings=section("hero", spacing="none"),
             ),
             block(
                 "package_listing",
                 heading="Popular Packages",
-                categories=PACKAGE_CATEGORIES,
+                categories=LISTING_CATEGORIES,
                 page_size=6,
-                default_category="Trekking",
+                default_category=LISTING_CATEGORIES[0],
                 show_filters=True,
-                settings=section("packages"),
+                settings=section("packages", spacing="none"),
             ),
             block(
                 "cultural_tours",
@@ -348,7 +353,7 @@ def packages_index(ref):
                 autoplay=False,
                 show_price=True,
                 cta=button(),
-                settings=section("cultural-tours"),
+                settings=section("cultural-tours", spacing="none"),
             ),
             reserve_cta("packages-cta", ref),
         ],
@@ -370,7 +375,7 @@ def destinations_index(ref):
                 image_width=565,
                 image_height=457,
                 show_search=True,
-                settings=section("hero"),
+                settings=section("hero", spacing="none"),
             ),
             block(
                 "destinations_grid",
@@ -378,7 +383,7 @@ def destinations_index(ref):
                 source="featured",
                 destinations=[],
                 limit=12,
-                settings=section("destinations"),
+                settings=section("destinations", spacing="none"),
             ),
             reserve_cta("destinations-cta", ref),
         ],

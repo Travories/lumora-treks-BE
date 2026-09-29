@@ -143,3 +143,21 @@
   height: 1.25rem;
   color: var(--w-color-secondary);
 }
+
+/* Live character counter under limited text fields (char-count.js). */
+.lumora-char-count {
+  margin-top: 0.25rem;
+  text-align: right;
+  font-size: 0.8125rem;
+  color: var(--w-color-text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.lumora-char-count[data-state="near"] {
+  color: var(--w-color-warning-100);
+}
+
+.lumora-char-count[data-state="over"] {
+  color: var(--w-color-critical-200);
+  font-weight: 600;
+}

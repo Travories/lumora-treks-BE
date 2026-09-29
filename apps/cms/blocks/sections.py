@@ -77,8 +77,8 @@ class TestimonialChooserBlock(SnippetChooserBlock):
 
 
 class StatBlock(blocks.StructBlock):
-    value = blocks.CharBlock(max_length=20, help_text="e.g. 24K+, 4.9, 120")
-    label = blocks.CharBlock(max_length=80)
+    value = blocks.CharBlock(max_length=5, help_text="e.g. 24K+, 4.9, 120")
+    label = blocks.CharBlock(max_length=25)
     icon = IconBlock()
 
     class Meta:
@@ -112,8 +112,8 @@ class DestinationCardBlock(blocks.StructBlock):
     destination = DestinationChooserBlock(
         required=False, help_text="Pick from the destination library, or fill the fields below."
     )
-    title = blocks.CharBlock(required=False, max_length=200)
-    description = blocks.TextBlock(required=False)
+    title = blocks.CharBlock(required=False, max_length=25)
+    description = blocks.TextBlock(required=False, max_length=170)
     image = APIImageChooserBlock(required=False)
     variant = blocks.ChoiceBlock(
         choices=[
@@ -168,7 +168,7 @@ class HeroSlideBlock(blocks.StructBlock):
     video = VideoChooserBlock(required=False, help_text="Optional background video, overrides the image.")
     alt = blocks.CharBlock(required=False, max_length=200)
     heading_override = blocks.CharBlock(
-        required=False, max_length=200, help_text="Per-slide heading; falls back to the hero heading."
+        required=False, max_length=30, help_text="Per-slide heading; falls back to the hero heading."
     )
     destination = DestinationChooserBlock(
         required=False,
@@ -185,8 +185,8 @@ class HeroBlock(SectionBlock):
 
     component = "Hero"
 
-    heading = blocks.CharBlock(max_length=200, default="Travel beyond destinations")
-    subheading = blocks.TextBlock(required=False)
+    heading = blocks.CharBlock(max_length=30, default="Travel beyond destinations")
+    subheading = blocks.TextBlock(required=False, max_length=30)
     slides = blocks.ListBlock(
         HeroSlideBlock(),
         min_num=1,
@@ -195,11 +195,11 @@ class HeroBlock(SectionBlock):
     )
     show_search = blocks.BooleanBlock(required=False, default=True, label="Show search bar")
     search_location_label = blocks.CharBlock(
-        required=False, default="Location", max_length=60, help_text="Read aloud by screen readers."
+        required=False, default="Location", max_length=10, help_text="Read aloud by screen readers."
     )
-    search_location_placeholder = blocks.CharBlock(required=False, default="Location", max_length=80)
+    search_location_placeholder = blocks.CharBlock(required=False, default="Location", max_length=10)
     search_button_label = blocks.CharBlock(
-        required=False, default="Search", max_length=40, help_text="Read aloud by screen readers."
+        required=False, default="Search", max_length=10, help_text="Read aloud by screen readers."
     )
 
     class Meta:
@@ -228,7 +228,7 @@ class SocialLinkBlock(blocks.StructBlock):
     """One social icon + link, used by `ContactFormBlock.socials`."""
 
     icon = IconBlock(help_text="Iconify glyph, e.g. mdi:facebook")
-    label = blocks.CharBlock(max_length=40)
+    label = blocks.CharBlock(max_length=10)
     url = blocks.URLBlock(required=False)
 
     class Meta:
@@ -240,23 +240,23 @@ class ContactHeroBlock(SectionBlock):
 
     component = "ContactHero"
 
-    heading = blocks.CharBlock(max_length=100, default="Create Memories")
+    heading = blocks.CharBlock(max_length=20, default="Create Memories")
     subtitle = blocks.CharBlock(
-        max_length=300,
+        max_length=100,
         default="Mountains, forests, heritage sites, and hidden gems are just the beginning of your next adventure.",
     )
     subtitle_highlight = blocks.CharBlock(
-        required=False, max_length=200, default="just the beginning of your next adventure."
+        required=False, max_length=45, default="just the beginning of your next adventure."
     )
-    tagline = blocks.CharBlock(max_length=200, default="Travel is more than a destination.")
-    tagline_highlight = blocks.CharBlock(required=False, max_length=50, default="Travel")
-    closing_heading = blocks.CharBlock(max_length=100, default="beyond maps")
+    tagline = blocks.CharBlock(max_length=35, default="Travel is more than a destination.")
+    tagline_highlight = blocks.CharBlock(required=False, max_length=10, default="Travel")
+    closing_heading = blocks.CharBlock(max_length=15, default="beyond maps")
     closing_text = blocks.CharBlock(
-        max_length=300,
+        max_length=120,
         default="We design meaningful travel experiences that connect you with nature, culture, and unforgettable journey at a time.",
     )
     closing_text_highlight = blocks.CharBlock(
-        required=False, max_length=200, default="and unforgettable journey at a time."
+        required=False, max_length=40, default="and unforgettable journey at a time."
     )
     image = APIImageChooserBlock()
 
@@ -272,19 +272,20 @@ class ContactFormBlock(SectionBlock):
 
     component = "ContactForm"
 
-    heading = blocks.CharBlock(max_length=200, default="Don't Hesitate to Contact Us")
-    heading_highlight = blocks.CharBlock(required=False, max_length=100, default="Contact Us")
+    heading = blocks.CharBlock(max_length=30, default="Don't Hesitate to Contact Us")
+    heading_highlight = blocks.CharBlock(required=False, max_length=15, default="Contact Us")
     description = blocks.TextBlock(
         required=False,
         default="Whether you have a quick question or want to book a full consultation — "
         "we're easy to reach. Fill in the form and we'll respond within one business day",
+        max_length=155,
     )
     description_highlight = blocks.CharBlock(
-        required=False, max_length=200, default="Fill in the form and we'll respond within one business day"
+        required=False, max_length=60, default="Fill in the form and we'll respond within one business day"
     )
     socials = blocks.ListBlock(SocialLinkBlock(), required=False, default=[])
     destinations = blocks.ListBlock(DestinationChooserBlock(), required=False, default=[])
-    submit_label = blocks.CharBlock(required=False, max_length=40, default="Reserve Now")
+    submit_label = blocks.CharBlock(required=False, max_length=15, default="Reserve Now")
 
     class Meta:
         icon = "form"
@@ -297,8 +298,8 @@ class PageHeroBlock(SectionBlock):
 
     component = "PageHero"
 
-    title = blocks.CharBlock(max_length=200)
-    subtitle = blocks.TextBlock(required=False)
+    title = blocks.CharBlock(max_length=40)
+    subtitle = blocks.TextBlock(required=False, max_length=80)
     image = APIImageChooserBlock()
     image_alt = blocks.CharBlock(required=False, max_length=200)
     image_width = blocks.IntegerBlock(default=565, min_value=100, max_value=1600)
@@ -316,14 +317,14 @@ class IntroStatsBlock(SectionBlock):
 
     component = "IntroStats"
 
-    heading = blocks.TextBlock(help_text="Large centred statement.")
+    heading = blocks.TextBlock(help_text="Large centred statement.", max_length=85)
     highlight = blocks.CharBlock(
         required=False,
-        max_length=120,
+        max_length=25,
         help_text="Words inside the heading to render in brand green italics.",
     )
-    description = blocks.TextBlock(required=False)
-    description_highlight = blocks.CharBlock(required=False, max_length=200)
+    description = blocks.TextBlock(required=False, max_length=185)
+    description_highlight = blocks.CharBlock(required=False, max_length=55)
     stats = blocks.ListBlock(StatBlock(), min_num=1, max_num=6)
 
     class Meta:
@@ -388,7 +389,7 @@ class PackageListingBlock(SectionBlock):
 
     component = "PackageListing"
 
-    heading = blocks.CharBlock(default="Popular Packages", max_length=200)
+    heading = blocks.CharBlock(default="Popular Packages", max_length=20)
     categories = blocks.ListBlock(blocks.CharBlock(max_length=60), required=False, default=[])
     page_size = blocks.IntegerBlock(default=6, min_value=1, max_value=48)
     default_category = blocks.CharBlock(required=False, max_length=60)
@@ -423,9 +424,9 @@ class ExperienceShowcaseBlock(SectionBlock):
 
     component = "ExperienceSection"
 
-    heading = blocks.CharBlock(max_length=250)
-    description = blocks.TextBlock(required=False)
-    description_highlight = blocks.CharBlock(required=False, max_length=250)
+    heading = blocks.CharBlock(max_length=70)
+    description = blocks.TextBlock(required=False, max_length=210)
+    description_highlight = blocks.CharBlock(required=False, max_length=80)
     show_arrows = blocks.BooleanBlock(required=False, default=True)
     small_cards = blocks.ListBlock(DestinationCardBlock(), required=False, default=[], max_num=6)
     feature_card = DestinationCardBlock(required=False, label="Large feature card")
@@ -438,13 +439,13 @@ class ExperienceShowcaseBlock(SectionBlock):
 
 class WhyChooseUsCardBlock(blocks.StructBlock):
     theme = blocks.ChoiceBlock(choices=[("light", "Light"), ("dark", "Dark")], default="light")
-    heading = blocks.CharBlock(max_length=120)
+    heading = blocks.CharBlock(max_length=25)
     heading_highlight = blocks.CharBlock(
-        required=False, max_length=60, help_text="Word/phrase inside heading to accent (italic, green)."
+        required=False, max_length=25, help_text="Word/phrase inside heading to accent (italic, green)."
     )
-    description = blocks.TextBlock()
+    description = blocks.TextBlock(max_length=160)
     description_highlight = blocks.CharBlock(
-        required=False, max_length=200, help_text="Phrase inside description to accent."
+        required=False, max_length=160, help_text="Phrase inside description to accent."
     )
     image = APIImageChooserBlock(required=False, label="Circle image")
     link = LinkBlock(required=False)
@@ -460,7 +461,7 @@ class WhyChooseUsBlock(SectionBlock):
     component = "WhyChooseUs"
 
     heading = HeadingGroupBlock()
-    description_highlight = blocks.CharBlock(required=False, max_length=250)
+    description_highlight = blocks.CharBlock(required=False, max_length=80)
     cards = blocks.ListBlock(WhyChooseUsCardBlock(), min_num=1, max_num=6)
 
     class Meta:
@@ -527,7 +528,7 @@ class DestinationsGridBlock(SectionBlock):
 
     component = "DestinationsGrid"
 
-    heading = blocks.CharBlock(default="Our Destinations", max_length=200)
+    heading = blocks.CharBlock(default="Our Destinations", max_length=20)
     source = blocks.ChoiceBlock(
         choices=[("featured", "Automatic — featured destinations"), ("selected", "Hand-picked")],
         default="featured",
@@ -757,7 +758,7 @@ class TestimonialsCarouselBlock(SectionBlock):
 
 
 class FAQItemBlock(blocks.StructBlock):
-    question = blocks.CharBlock(max_length=250)
+    question = blocks.CharBlock(max_length=50)
     answer = APIRichTextBlock(required=False)
     open_by_default = blocks.BooleanBlock(required=False, default=False)
 
@@ -774,8 +775,8 @@ class FAQBlock(SectionBlock):
     heading = HeadingGroupBlock()
     items = blocks.ListBlock(FAQItemBlock(), min_num=1)
     show_side_card = blocks.BooleanBlock(required=False, default=True)
-    side_card_heading = blocks.CharBlock(required=False, max_length=160)
-    side_card_text = blocks.TextBlock(required=False)
+    side_card_heading = blocks.CharBlock(required=False, max_length=35)
+    side_card_text = blocks.TextBlock(required=False, max_length=80)
     side_card_button = ButtonBlock(required=False)
 
     class Meta:
@@ -806,11 +807,11 @@ class CTABannerBlock(SectionBlock):
 
     component = "CTABanner"
 
-    heading = blocks.CharBlock(max_length=200)
+    heading = blocks.CharBlock(max_length=65)
     heading_highlight = blocks.CharBlock(
-        required=False, max_length=60, help_text="Word/phrase inside heading to accent (italic, green)."
+        required=False, max_length=65, help_text="Word/phrase inside heading to accent (italic, green)."
     )
-    text = blocks.TextBlock(required=False)
+    text = blocks.TextBlock(required=False, max_length=120)
     background_image = APIImageChooserBlock(required=False)
     buttons = blocks.ListBlock(ButtonBlock(), required=False, default=[], max_num=3)
 
@@ -825,8 +826,8 @@ class CulturalToursBlock(PopularPackagesBlock):
 
     component = "CulturalDayTours"
 
-    heading = blocks.CharBlock(default="Cultural & Day Tours", max_length=200)
-    description = blocks.TextBlock(required=False)
+    heading = blocks.CharBlock(default="Cultural & Day Tours", max_length=25)
+    description = blocks.TextBlock(required=False, max_length=55)
 
     class Meta:
         icon = "list-ul"
@@ -842,7 +843,7 @@ class BlogListingBlock(SectionBlock):
 
     component = "BlogListing"
 
-    heading = blocks.CharBlock(default="Latest stories", max_length=200)
+    heading = blocks.CharBlock(default="Latest stories", max_length=15)
     categories = blocks.ListBlock(
         blocks.CharBlock(max_length=60),
         required=False,
@@ -884,7 +885,7 @@ class BlogRelatedStoriesBlock(SectionBlock):
     """Recent stories shown after the current article."""
 
     component = "RelatedStories"
-    heading = blocks.CharBlock(default="Keep reading", max_length=120)
+    heading = blocks.CharBlock(default="Keep reading", max_length=15)
     count = blocks.IntegerBlock(default=3, min_value=1, max_value=6)
 
     class Meta:
@@ -898,7 +899,7 @@ class RichTextSectionBlock(SectionBlock):
 
     component = "RichTextSection"
 
-    heading = blocks.CharBlock(required=False, max_length=200)
+    heading = blocks.CharBlock(required=False, max_length=20)
     body = APIRichTextBlock()
     width = blocks.ChoiceBlock(
         choices=[("narrow", "Narrow (prose)"), ("default", "Default")], default="narrow"
@@ -1062,10 +1063,10 @@ class SpacerBlock(SectionBlock):
 
 class AuthenticExperienceItemBlock(blocks.StructBlock):
     number = blocks.CharBlock(
-        required=False, max_length=8, help_text="e.g. 01 — auto-numbered if blank."
+        required=False, max_length=5, help_text="e.g. 01 — auto-numbered if blank."
     )
-    title = blocks.CharBlock(max_length=160)
-    description = blocks.TextBlock(required=False)
+    title = blocks.CharBlock(max_length=25)
+    description = blocks.TextBlock(required=False, max_length=115)
 
     class Meta:
         icon = "list-ol"
@@ -1078,12 +1079,12 @@ class AuthenticExperiencesBlock(SectionBlock):
     component = "AuthenticExperiences"
 
     heading = blocks.CharBlock(
-        max_length=250, default="Discover Nepal Through Authentic Experiences with Us"
+        max_length=55, default="Discover Nepal Through Authentic Experiences with Us"
     )
-    description = blocks.TextBlock(required=False)
+    description = blocks.TextBlock(required=False, max_length=160)
     description_highlight = blocks.CharBlock(
         required=False,
-        max_length=250,
+        max_length=65,
         help_text="Trailing phrase inside the description to render in muted italic.",
     )
     image = APIImageChooserBlock(required=False)

@@ -23,6 +23,7 @@ from wagtail.models import Orderable
 from wagtail.search import index
 
 from apps.catalog.editorial import destination_related_items, package_related_items
+from apps.core.fields import LimitedCharField, LimitedTextField
 from apps.core.panels import RelatedLinksPanel
 
 
@@ -54,15 +55,15 @@ class Destination(index.Indexed, SlugMixin, models.Model):
         ("large", "Large feature tile"),
     ]
 
-    title = models.CharField(max_length=200)
-    subtitle = models.CharField(max_length=200, blank=True)
+    title = LimitedCharField(max_length=200, ui_max_length=25)
+    subtitle = LimitedCharField(max_length=200, blank=True, ui_max_length=80)
     description = models.TextField(blank=True)
     highlights = models.TextField(blank=True, help_text="One destination highlight per line.")
     image = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    region = models.CharField(max_length=120, blank=True, help_text="e.g. Annapurna, Everest.")
-    best_season = models.CharField(max_length=120, blank=True)
+    region = LimitedCharField(max_length=120, blank=True, help_text="e.g. Annapurna, Everest.", ui_max_length=20)
+    best_season = LimitedCharField(max_length=120, blank=True, ui_max_length=50)
     default_layout = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default="small")
     external_url = models.URLField(
         blank=True,
@@ -112,7 +113,7 @@ class Destination(index.Indexed, SlugMixin, models.Model):
 
 class PackageHighlight(Orderable):
     package = ParentalKey("catalog.Package", related_name="highlights", on_delete=models.CASCADE)
-    text = models.CharField(max_length=255)
+    text = LimitedCharField(max_length=255, ui_max_length=45)
     icon = models.CharField(max_length=100, blank=True, help_text="Iconify name.")
 
     panels = [FieldPanel("text"), FieldPanel("icon")]
@@ -123,11 +124,12 @@ class PackageHighlight(Orderable):
 
 class PackageItineraryDay(Orderable):
     package = ParentalKey("catalog.Package", related_name="itinerary", on_delete=models.CASCADE)
-    day_label = models.CharField(max_length=60, blank=True, help_text="e.g. Day 1 — defaults to position.")
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
+    day_label = LimitedCharField(max_length=60, blank=True, help_text="e.g. Day 1 — defaults to position.", ui_max_length=10)
+    title = LimitedCharField(max_length=200, ui_max_length=50)
+    description = models.TextField(help_text="What happens this day — shown under the day's title.")
     image = models.ForeignKey(
-        "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+        "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        help_text="Optional photo shown beside this day.",
     )
 
     panels = [FieldPanel("day_label"), FieldPanel("title"), FieldPanel("description"), FieldPanel("image")]
@@ -139,7 +141,7 @@ class PackageItineraryDay(Orderable):
 class PackageGalleryImage(Orderable):
     package = ParentalKey("catalog.Package", related_name="gallery", on_delete=models.CASCADE)
     image = models.ForeignKey("core.CustomImage", on_delete=models.CASCADE, related_name="+")
-    caption = models.CharField(max_length=255, blank=True)
+    caption = LimitedCharField(max_length=255, blank=True, ui_max_length=40)
 
     panels = [FieldPanel("image"), FieldPanel("caption")]
 
@@ -150,7 +152,7 @@ class PackageIncludedItem(Orderable):
     KIND_CHOICES = [("included", "Included"), ("excluded", "Excluded")]
     package = ParentalKey("catalog.Package", related_name="included_items", on_delete=models.CASCADE)
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
-    text = models.CharField(max_length=255)
+    text = LimitedCharField(max_length=255, ui_max_length=35)
 
     panels = [FieldPanel("kind"), FieldPanel("text")]
 
@@ -218,7 +220,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         ("Paragliding", "Paragliding"),
     ]
 
-    title = models.CharField(max_length=200)
+    title = LimitedCharField(max_length=200, ui_max_length=30)
     public_code = models.CharField(
         max_length=5,
         unique=True,
@@ -231,8 +233,11 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         default="Trekking",
         help_text="Drives the /packages page filter tabs.",
     )
-    summary = models.TextField(blank=True, help_text="Short line shown on the card.")
-    description = RichTextField(blank=True, features=["h2", "h3", "bold", "italic", "ol", "ul", "link"])
+    summary = LimitedTextField(help_text="One or two sentences shown on package cards.", ui_max_length=95)
+    description = RichTextField(
+        features=["h2", "h3", "bold", "italic", "ol", "ul", "link"],
+        help_text="The Overview on the package page.",
+    )
     image = models.ForeignKey(
         "core.CustomImage",
         null=True,
@@ -243,7 +248,7 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     )
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
-    duration = models.CharField(max_length=120, blank=True, help_text="e.g. 4 days & 3 nights")
+    duration = LimitedCharField(max_length=120, blank=True, help_text="e.g. 4 days & 3 nights", ui_max_length=10)
     duration_days = models.PositiveIntegerField(null=True, blank=True)
     people_count = models.PositiveIntegerField(default=1, help_text="Max group size.")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -251,13 +256,27 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     currency = models.CharField(max_length=8, default="USD")
     difficulty = models.CharField(
         max_length=40,
-        blank=True,
+        default="moderate",
         choices=[
             ("easy", "Easy"),
             ("moderate", "Moderate"),
             ("challenging", "Challenging"),
             ("strenuous", "Strenuous"),
         ],
+    )
+    max_altitude = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Highest point of the trip in metres, e.g. 4130. Leave empty for low-altitude tours.",
+    )
+    accommodation = LimitedCharField(
+        max_length=200, help_text="Where travellers sleep, e.g. \"Mountain teahouses (twin share)\".",
+        ui_max_length=40,
+    )
+    meals = LimitedCharField(max_length=200, help_text="Which meals are covered, e.g. \"Daily breakfast\".", ui_max_length=60)
+    transport = LimitedCharField(
+        max_length=200, help_text="How travellers get around, e.g. \"Private jeep to the trailhead\".",
+        ui_max_length=50,
     )
     destination = models.ForeignKey(
         "catalog.Destination", null=True, blank=True, on_delete=models.SET_NULL, related_name="packages"
@@ -310,8 +329,13 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
                             FieldPanel("duration_days"),
                             FieldPanel("people_count"),
                             FieldPanel("difficulty"),
+                            FieldPanel("max_altitude"),
+                            FieldPanel("accommodation"),
+                            FieldPanel("meals"),
+                            FieldPanel("transport"),
                         ],
                         heading="Trip facts",
+                        help_text="Shown as Key Facts on the package page.",
                     ),
                 ],
                 heading="Pricing & facts",
@@ -390,9 +414,9 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
 class Testimonial(index.Indexed, models.Model):
     """A customer review, reusable across testimonial sections."""
 
-    author_name = models.CharField(max_length=120)
-    author_role = models.CharField(max_length=160, blank=True, help_text="e.g. Everest Base Camp Trekker")
-    quote = models.TextField()
+    author_name = LimitedCharField(max_length=120, ui_max_length=15)
+    author_role = LimitedCharField(max_length=160, blank=True, help_text="e.g. Everest Base Camp Trekker", ui_max_length=30)
+    quote = LimitedTextField(ui_max_length=155)
     avatar = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

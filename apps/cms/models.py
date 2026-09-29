@@ -7,9 +7,11 @@ JSON; the frontend maps each block's `component` to a React component.
 """
 
 from django.conf import settings
+from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.shortcuts import redirect
 from django.urls import reverse
+from wagtail.admin.forms import WagtailAdminPageForm
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList, TabbedInterface
 from wagtail.api import APIField
 from wagtail.fields import StreamField
@@ -20,6 +22,7 @@ from apps.catalog.editorial import destination_page_related_items, package_page_
 from apps.catalog.serializers import serialize_destination, serialize_package
 from apps.cms.blocks import SECTION_BLOCKS, section_blocks
 from apps.cms.blocks.article import ARTICLE_BLOCKS
+from apps.core.fields import LimitedCharField, LimitedTextField
 from apps.core.panels import RelatedLinksPanel
 from apps.core.serializers import serialize_image
 
@@ -453,6 +456,20 @@ BLOG_CATEGORY_CHOICES = [
 ]
 
 
+class BlogPostPageForm(WagtailAdminPageForm):
+    """Story titles appear on cards and the article hero, so they get a UI limit
+    like other editorial text (Page.title itself is shared by every page type)."""
+
+    TITLE_MAX_LENGTH = 45
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        title = self.fields["title"]
+        title.max_length = self.TITLE_MAX_LENGTH
+        title.widget.attrs["maxlength"] = self.TITLE_MAX_LENGTH
+        title.validators.append(MaxLengthValidator(self.TITLE_MAX_LENGTH))
+
+
 class BlogPostPage(BasePage):
     """Travel stories / guides.
 
@@ -468,7 +485,7 @@ class BlogPostPage(BasePage):
         "blog_related_stories",
         "cta_banner",
     )
-    excerpt = models.TextField(blank=True)
+    excerpt = LimitedTextField(blank=True, ui_max_length=125)
     hero_image = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -477,8 +494,8 @@ class BlogPostPage(BasePage):
         default=False, help_text="Show as the large featured story at the top of the blog index."
     )
     published_date = models.DateField(null=True, blank=True)
-    author_name = models.CharField(max_length=120, blank=True)
-    author_role = models.CharField(max_length=160, blank=True, help_text="e.g. Lead Guide, Travel Writer.")
+    author_name = LimitedCharField(max_length=120, blank=True, ui_max_length=15)
+    author_role = LimitedCharField(max_length=160, blank=True, help_text="e.g. Lead Guide, Travel Writer.", ui_max_length=15)
     author_avatar = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -499,6 +516,7 @@ class BlogPostPage(BasePage):
     ]
 
     parent_page_types = ["cms.BlogIndexPage"]
+    base_form_class = BlogPostPageForm
     edit_handler = page_edit_handler(
         Page.content_panels
         + [FieldPanel("excerpt"), FieldPanel("hero_image"), FieldPanel("article_body")],

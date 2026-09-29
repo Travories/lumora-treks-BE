@@ -7,8 +7,13 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 
-# Rendition specs generated for every image exposed through the API.
-# Keep these in sync with the `sizes` attributes used by the Next.js frontend.
+# The image the API serves as `url`/`src`: large enough for full-width
+# layouts, a fraction of the 2400px original. The Next.js image optimizer
+# resizes it further per device, and it is pre-generated when an image is
+# saved (apps/core/signals.py), so no visitor waits for it.
+DISPLAY_RENDITION = "max-1600x1600|format-webp|webpquality-80"
+
+# Named crops, generated only for callers that ask for them explicitly.
 IMAGE_RENDITIONS = {
     "thumb": "fill-400x300|format-webp|webpquality-80",
     "card": "fill-800x600|format-webp|webpquality-82",
@@ -37,9 +42,9 @@ def serialize_image(image, renditions=None):
     if image is None:
         return None
 
-    specs = IMAGE_RENDITIONS if renditions is None else {
-        name: IMAGE_RENDITIONS[name] for name in renditions if name in IMAGE_RENDITIONS
-    }
+    specs = {name: IMAGE_RENDITIONS[name] for name in renditions or () if name in IMAGE_RENDITIONS}
+    original_url = absolute_url(image.file.url)
+    display_url = _rendition_url(image, DISPLAY_RENDITION) or original_url
 
     data = {
         "id": image.pk,
@@ -49,7 +54,8 @@ def serialize_image(image, renditions=None):
         "credit": getattr(image, "credit", ""),
         "width": image.width,
         "height": image.height,
-        "url": absolute_url(image.file.url),
+        "url": display_url,
+        "original_url": original_url,
         "focal_point": _focal_point(image),
         "renditions": {},
     }
@@ -65,10 +71,15 @@ def serialize_image(image, renditions=None):
             "height": rendition.height,
         }
 
-    # Convenience: the rendition most templates want, already flattened.
-    default = data["renditions"].get("card") or data["renditions"].get("wide")
-    data["src"] = default["url"] if default else data["url"]
+    data["src"] = display_url
     return data
+
+
+def _rendition_url(image, spec):
+    try:
+        return absolute_url(image.get_rendition(spec).url)
+    except Exception:  # e.g. an SVG or a missing source file — fall back to the original
+        return None
 
 
 def _focal_point(image):

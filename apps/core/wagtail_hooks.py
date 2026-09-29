@@ -103,6 +103,11 @@ def lumora_admin_css():
     return format_html('<link rel="stylesheet" href="{}">', static("lumora_admin/admin.css"))
 
 
+@hooks.register("insert_global_admin_js")
+def lumora_admin_js():
+    return format_html('<script src="{}" defer></script>', static("lumora_admin/char-count.js"))
+
+
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------

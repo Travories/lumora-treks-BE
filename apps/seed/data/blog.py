@@ -122,7 +122,7 @@ def index_body(ref):
             image_width=620,
             image_height=460,
             show_search=False,
-            settings=section("blog-hero"),
+            settings=section("blog-hero", spacing="none"),
         ),
         block(
             "blog_listing",

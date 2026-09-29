@@ -10,6 +10,7 @@ from wagtail.contrib.settings.models import BaseGenericSetting, register_setting
 from wagtail.fields import StreamField
 
 from apps.core.blocks import ButtonBlock, IconBlock, LinkBlock
+from apps.core.fields import LimitedCharField, LimitedTextField
 
 
 class NavItemBlock(LinkBlock):
@@ -47,8 +48,8 @@ class SocialLinkBlock(blocks.StructBlock):
 class BrandSettings(BaseGenericSetting):
     """Logo, name and the copy that identifies the company."""
 
-    site_name = models.CharField(max_length=120, default="Lumora Treks")
-    tagline = models.CharField(max_length=250, blank=True)
+    site_name = LimitedCharField(max_length=120, default="Lumora Treks", ui_max_length=15)
+    tagline = LimitedCharField(max_length=250, blank=True, ui_max_length=30)
     logo = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -72,13 +73,13 @@ class BrandSettings(BaseGenericSetting):
     default_share_image = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    default_meta_title = models.CharField(max_length=200, blank=True)
-    default_meta_description = models.TextField(blank=True)
+    default_meta_title = LimitedCharField(max_length=200, blank=True, ui_max_length=60)
+    default_meta_description = LimitedTextField(blank=True, ui_max_length=160)
 
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=40, blank=True)
     whatsapp = models.CharField(max_length=40, blank=True)
-    address = models.TextField(blank=True)
+    address = LimitedTextField(blank=True, ui_max_length=25)
     map_embed_url = models.URLField(blank=True)
 
     panels = [
@@ -131,8 +132,9 @@ class NavigationSettings(BaseGenericSetting):
         [("button", ButtonBlock())], blank=True, max_num=1
     )
     sticky = models.BooleanField(default=True)
-    announcement_text = models.CharField(
-        max_length=250, blank=True, help_text="Optional bar above the navbar."
+    announcement_text = LimitedCharField(
+        max_length=250, blank=True, help_text="Optional bar above the navbar.",
+        ui_max_length=80,
     )
     announcement_link = models.URLField(blank=True)
 
@@ -154,23 +156,24 @@ class NavigationSettings(BaseGenericSetting):
 class FooterSettings(BaseGenericSetting):
     """→ `src/components/layout/Footer.tsx`"""
 
-    description = models.TextField(blank=True)
+    description = LimitedTextField(blank=True, ui_max_length=130)
     columns = StreamField([("column", FooterColumnBlock())], blank=True)
     socials = StreamField([("social", SocialLinkBlock())], blank=True)
 
     newsletter_enabled = models.BooleanField(default=True)
-    newsletter_heading = models.CharField(max_length=120, blank=True, default="Newsletter")
-    newsletter_text = models.CharField(max_length=250, blank=True)
-    newsletter_placeholder = models.CharField(max_length=120, blank=True, default="Your email")
-    newsletter_button_label = models.CharField(max_length=60, blank=True, default="Join")
+    newsletter_heading = LimitedCharField(max_length=120, blank=True, default="Newsletter", ui_max_length=15)
+    newsletter_text = LimitedCharField(max_length=250, blank=True, ui_max_length=55)
+    newsletter_placeholder = LimitedCharField(max_length=120, blank=True, default="Your email", ui_max_length=15)
+    newsletter_button_label = LimitedCharField(max_length=60, blank=True, default="Join", ui_max_length=10)
 
-    copyright_text = models.CharField(
+    copyright_text = LimitedCharField(
         max_length=250,
         blank=True,
         help_text="{year} is replaced with the current year.",
         default="© {year} Lumora Treks. All rights reserved.",
+        ui_max_length=45,
     )
-    secondary_text = models.CharField(max_length=250, blank=True)
+    secondary_text = LimitedCharField(max_length=250, blank=True, ui_max_length=55)
 
     panels = [
         FieldPanel("description"),

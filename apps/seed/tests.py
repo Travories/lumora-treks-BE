@@ -55,6 +55,49 @@ class SeedContentTests(TestCase):
                 self.assertTrue(package.included_items.filter(kind="included").exists())
                 self.assertTrue(package.group_pricing.exists())
 
+    def test_package_detail_exposes_trip_facts(self):
+        from apps.catalog.serializers import serialize_package
+
+        data = serialize_package(Package.objects.get(slug="annapurna-base-camp-trek"), detail=True)
+        self.assertEqual(data["max_altitude"], 4130)
+        for fact in ("accommodation", "meals", "transport", "difficulty"):
+            with self.subTest(fact=fact):
+                self.assertTrue(data[fact])
+
+    def test_api_serves_display_renditions_not_originals(self):
+        from apps.core.serializers import serialize_image
+
+        data = serialize_image(Package.objects.get(slug="annapurna-base-camp-trek").image)
+        self.assertIn("max-1600x1600", data["url"])
+        self.assertEqual(data["src"], data["url"])
+        self.assertIn("original_images/", data["original_url"])
+
+    def test_seed_content_fits_every_editorial_limit(self):
+        """Editors must be able to save any seeded page or snippet unchanged."""
+        from django.apps import apps as django_apps
+        from wagtail.fields import StreamField
+        from wagtail.models import Page
+
+        from apps.cms.models import BlogPostPageForm
+
+        for page in Page.objects.filter(depth__gt=1).specific():
+            for field in page._meta.get_fields():
+                if isinstance(field, StreamField):
+                    with self.subTest(page=page.url_path, field=field.name):
+                        field.stream_block.clean(getattr(page, field.name))
+        for label in (
+            "catalog.Package", "catalog.Destination", "catalog.Testimonial", "catalog.PackageHighlight",
+            "catalog.PackageItineraryDay", "catalog.PackageIncludedItem", "catalog.PackageGalleryImage",
+            "navigation.BrandSettings", "navigation.FooterSettings", "navigation.NavigationSettings",
+        ):
+            for obj in django_apps.get_model(label).objects.all():
+                with self.subTest(obj=f"{label}:{obj.pk}"):
+                    obj.clean_fields(exclude=["slug", "image", "logo", "logo_dark", "favicon", "default_share_image"])
+        for post in BlogPostPage.objects.all():
+            with self.subTest(post=post.slug):
+                self.assertLessEqual(len(post.title), BlogPostPageForm.TITLE_MAX_LENGTH)
+                post.clean_fields(exclude=["path", "depth", "url_path", "draft_title", "slug", "hero_image", "author_avatar"])
+
     def test_home_is_the_site_root(self):
         site = Site.objects.get(is_default_site=True)
         self.assertIsInstance(site.root_page.specific, HomePage)
@@ -101,3 +144,19 @@ class SeedIdempotencyTests(TestCase):
             call_command("seed_database", "--if-enabled", "--noinput", stdout=out)
         reset_database.assert_not_called()
         self.assertIn("SEED_DATABASE is off", out.getvalue())
+
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
+class DisplayRenditionSignalTests(TestCase):
+    def test_saving_an_image_pregenerates_its_display_rendition(self):
+        from django.core.files.images import ImageFile
+
+        from apps.core.models import CustomImage
+        from apps.core.serializers import DISPLAY_RENDITION
+
+        with self.captureOnCommitCallbacks(execute=True):
+            with (pipeline.MEDIA_DIR / "patan.webp").open("rb") as handle:
+                image = CustomImage(title="Patan")
+                image.file = ImageFile(handle, name="patan.webp")
+                image.save()
+        self.assertTrue(image.renditions.filter(filter_spec=DISPLAY_RENDITION).exists())

@@ -7,6 +7,7 @@ a decoupled frontend. Every chooser here is subclassed to emit a full object
 frontend everything it needs to render.
 """
 
+from django.core.validators import URLValidator
 from wagtail import blocks
 from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.embeds.blocks import EmbedBlock
@@ -118,6 +119,25 @@ class IconBlock(blocks.CharBlock):
         super().__init__(**kwargs)
 
 
+def validate_link_url(value):
+    """A full http(s) URL, a path on this site (/packages) or an anchor (#faq)."""
+    if value.startswith("#") or (value.startswith("/") and not value.startswith("//")):
+        return
+    URLValidator(schemes=["http", "https"])(value)
+
+
+class LinkURLBlock(blocks.CharBlock):
+    """Like URLBlock, but also accepts site paths such as /packages or /contact#faq."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("max_length", 500)
+        kwargs.setdefault("validators", [validate_link_url])
+        kwargs.setdefault(
+            "help_text", "A full URL (https://…) or a path on this site, e.g. /packages or /contact#faq."
+        )
+        super().__init__(**kwargs)
+
+
 class LinkBlock(blocks.StructBlock):
     """
     One link that can point at a CMS page, an external URL, an on-page anchor,
@@ -127,17 +147,17 @@ class LinkBlock(blocks.StructBlock):
 
     LINK_TYPES = [
         ("page", "CMS page"),
-        ("url", "External URL"),
+        ("url", "URL or site path"),
         ("anchor", "Anchor on this page"),
         ("document", "Document"),
         ("email", "Email address"),
         ("phone", "Phone number"),
     ]
 
-    label = blocks.CharBlock(required=False, max_length=80)
+    label = blocks.CharBlock(required=False, max_length=25)
     link_type = blocks.ChoiceBlock(choices=LINK_TYPES, default="page")
     page = APIPageChooserBlock(required=False)
-    url = blocks.URLBlock(required=False)
+    url = LinkURLBlock(required=False)
     anchor = blocks.CharBlock(required=False, max_length=80, help_text="Without the '#'.")
     document = APIDocumentChooserBlock(required=False)
     email = blocks.EmailBlock(required=False)
@@ -270,11 +290,11 @@ class HeadingGroupBlock(blocks.StructBlock):
 
     eyebrow = blocks.CharBlock(
         required=False,
-        max_length=120,
+        max_length=20,
         help_text="Small script-font line above the heading.",
     )
-    heading = blocks.CharBlock(required=False, max_length=200)
-    description = blocks.TextBlock(required=False)
+    heading = blocks.CharBlock(required=False, max_length=30)
+    description = blocks.TextBlock(required=False, max_length=210)
     align = blocks.ChoiceBlock(
         choices=[("center", "Center"), ("left", "Left")],
         default="center",

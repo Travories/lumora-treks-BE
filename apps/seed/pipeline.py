@@ -265,6 +265,10 @@ class Seeder:
                 price=data["price"],
                 difficulty=data["difficulty"],
                 people_count=data["people_count"],
+                max_altitude=data["max_altitude"],
+                accommodation=data["accommodation"],
+                meals=data["meals"],
+                transport=data["transport"],
                 is_popular=data["is_popular"],
                 sort_order=order,
             )

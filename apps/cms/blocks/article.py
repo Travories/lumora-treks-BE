@@ -19,7 +19,7 @@ from apps.core.blocks import APIImageChooserBlock, APIRichTextBlock
 
 class ArticleQuoteBlock(blocks.StructBlock):
     text = blocks.TextBlock()
-    cite = blocks.CharBlock(required=False, max_length=160, help_text="Attribution, e.g. a person or source.")
+    cite = blocks.CharBlock(required=False, max_length=25, help_text="Attribution, e.g. a person or source.")
 
     class Meta:
         icon = "openquote"
@@ -29,7 +29,7 @@ class ArticleQuoteBlock(blocks.StructBlock):
 class ArticleImageBlock(blocks.StructBlock):
     image = APIImageChooserBlock()
     alt = blocks.CharBlock(required=False, max_length=200)
-    caption = blocks.CharBlock(required=False, max_length=250)
+    caption = blocks.CharBlock(required=False, max_length=60)
 
     class Meta:
         icon = "image"

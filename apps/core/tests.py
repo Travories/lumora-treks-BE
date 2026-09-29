@@ -22,6 +22,8 @@ class LumoraAdminTests(TestCase):
         cls.home = HomePage(title="Home", slug="lumora-home")
         root.add_child(instance=cls.home)
         Site.objects.update(root_page=cls.home, is_default_site=True)
+        # A queryset update skips the signal that clears Wagtail's cached site roots.
+        Site.clear_site_root_paths_cache()
         cls.home.add_child(instance=PackageIndexPage(title="Packages", slug="packages"))
         cls.blog_index = BlogIndexPage(title="Blog", slug="blog")
         cls.home.add_child(instance=cls.blog_index)
@@ -180,3 +182,20 @@ class StableMediaUrlTests(TestCase):
         from django.core.files.storage import default_storage
 
         self.assertIn("X-Amz-Signature=", default_storage.url("documents/contract.pdf"))
+
+
+class EditorialLimitTests(TestCase):
+    def test_limited_fields_enforce_the_ui_limit_but_keep_the_column_size(self):
+        from django.core.exceptions import ValidationError
+
+        field = Package._meta.get_field("title")
+        self.assertEqual(field.max_length, 200)  # database column unchanged
+        self.assertEqual(field.formfield().max_length, 30)  # admin form + counter
+        with self.assertRaises(ValidationError):
+            field.run_validators("x" * 31)
+        field.run_validators("x" * 30)
+
+    def test_admin_loads_the_character_counter(self):
+        admin = get_user_model().objects.create_superuser("limits", "limits@example.com", "unused")
+        self.client.force_login(admin)
+        self.assertContains(self.client.get("/admin/"), "lumora_admin/char-count.js")
