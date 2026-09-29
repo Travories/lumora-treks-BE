@@ -156,10 +156,23 @@ class DestinationCardBlock(blocks.StructBlock):
 
 class HeroSlideBlock(blocks.StructBlock):
     image = APIImageChooserBlock(required=False)
+    foreground = APIImageChooserBlock(
+        required=False,
+        label="Foreground cut-out",
+        help_text=(
+            "Optional transparent PNG cut from this exact photo (e.g. the mountain peaks). It is drawn "
+            "in front of the heading, so the heading appears behind the scenery. Leave empty for a normal "
+            "photo — the heading then sits on top of it."
+        ),
+    )
     video = VideoChooserBlock(required=False, help_text="Optional background video, overrides the image.")
     alt = blocks.CharBlock(required=False, max_length=200)
     heading_override = blocks.CharBlock(
         required=False, max_length=200, help_text="Per-slide heading; falls back to the hero heading."
+    )
+    destination = DestinationChooserBlock(
+        required=False,
+        help_text="Destination shown in the card while this slide is on screen.",
     )
 
     class Meta:
@@ -174,19 +187,20 @@ class HeroBlock(SectionBlock):
 
     heading = blocks.CharBlock(max_length=200, default="Travel beyond destinations")
     subheading = blocks.TextBlock(required=False)
-    slides = blocks.ListBlock(HeroSlideBlock(), min_num=1, label="Slides")
-    mountain_cutout = blocks.BooleanBlock(
-        required=False,
-        default=True,
-        help_text="Clip a copy of the slide into a skyline in front of the heading.",
+    slides = blocks.ListBlock(
+        HeroSlideBlock(),
+        min_num=1,
+        label="Slides",
+        help_text="Visitors move between slides with the arrows on either side of the hero.",
     )
     show_search = blocks.BooleanBlock(required=False, default=True, label="Show search bar")
-    search_location_label = blocks.CharBlock(required=False, default="Location", max_length=60)
-    search_location_placeholder = blocks.CharBlock(required=False, default="Where to go?", max_length=80)
-    search_date_label = blocks.CharBlock(required=False, default="Date", max_length=60)
-    search_date_placeholder = blocks.CharBlock(required=False, default="Add dates", max_length=80)
-    search_button_label = blocks.CharBlock(required=False, default="Search", max_length=40)
-    buttons = blocks.ListBlock(ButtonBlock(), required=False, default=[], label="Call to action buttons")
+    search_location_label = blocks.CharBlock(
+        required=False, default="Location", max_length=60, help_text="Read aloud by screen readers."
+    )
+    search_location_placeholder = blocks.CharBlock(required=False, default="Location", max_length=80)
+    search_button_label = blocks.CharBlock(
+        required=False, default="Search", max_length=40, help_text="Read aloud by screen readers."
+    )
 
     class Meta:
         icon = "image"

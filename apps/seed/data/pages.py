@@ -85,6 +85,17 @@ def faq_section(anchor_id="faq"):
     )
 
 
+def hero_slide(ref, image, alt, destination, foreground=None):
+    return {
+        "image": ref.image(image),
+        "foreground": ref.image(foreground) if foreground else None,
+        "video": None,
+        "alt": alt,
+        "heading_override": "",
+        "destination": ref.destination(destination),
+    }
+
+
 def destination_card(ref, slug, image, variant="default", layout="small", description=""):
     return {
         "destination": ref.destination(slug),
@@ -105,19 +116,20 @@ def home_body(ref):
         block(
             "hero",
             heading="Travel beyond destinations",
+            subheading="Creating lifelong memories",
             slides=[
-                {"image": ref.image("hero"), "alt": "Nepal mountain landscape"},
-                {"image": ref.image("everest-region"), "alt": "Ama Dablam in the Everest region"},
-                {"image": ref.image("annapurna-region"), "alt": "Annapurna South above Ghandruk"},
+                # The designed scene: the cut-out peaks are drawn in front of the heading.
+                hero_slide(
+                    ref, "hero-scene", "Snow-capped mountain landscape", "annapurna-circuit", foreground="hero-cutout"
+                ),
+                hero_slide(ref, "everest-region", "Ama Dablam in the Everest region", "everest-region"),
+                hero_slide(ref, "annapurna-region", "Annapurna South above Ghandruk", "annapurna-region"),
+                hero_slide(ref, "pokhara", "Phewa Lake and the Annapurna range", "pokhara"),
             ],
-            mountain_cutout=True,
             show_search=True,
             search_location_label="Location",
-            search_location_placeholder="Where to go?",
-            search_date_label="Date",
-            search_date_placeholder="Add dates",
+            search_location_placeholder="Location",
             search_button_label="Search",
-            buttons=[],
             settings=section("hero", container="full"),
         ),
         block(

@@ -171,9 +171,14 @@ IMAGES = {
         "credit": "Gaurav Dhwaj Khadka / Wikimedia Commons / CC BY-SA 4.0 — https://commons.wikimedia.org/wiki/File:Masu_Bhat_1.jpg",
     },
     # Design assets
-    "hero": {
-        "title": "Himalayan panorama",
-        "alt": "Snow-capped Himalayan peaks above forested ridges",
+    "hero-scene": {
+        "title": "Hero mountain scene",
+        "alt": "Snow-capped mountain landscape",
+        "credit": "Lumora Treks",
+    },
+    "hero-cutout": {
+        "title": "Hero mountain cut-out",
+        "alt": "",
         "credit": "Lumora Treks",
     },
     "cta-bg": {
