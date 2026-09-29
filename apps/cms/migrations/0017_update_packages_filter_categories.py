@@ -7,7 +7,7 @@ tabs. Re-seeding without --reset won't fix this (the page body already
 exists, so the seed skips it), so we rewrite the stored list here.
 
 Idempotent: only touches `package_listing` blocks whose `categories` differ
-from the target list. Mirrors the list in `seed_lumora`.
+from the target list. Mirrors the list in `apps/seed/data/pages.py`.
 """
 
 from django.db import migrations

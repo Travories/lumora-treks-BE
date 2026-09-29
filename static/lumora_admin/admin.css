@@ -1,0 +1,145 @@
+/*
+ * Lumora Admin — brand layer over Wagtail's admin.
+ *
+ * Wagtail derives every shade from these HSL tokens, so the whole UI follows
+ * the Lumora palette without restyling components. The secondary (buttons,
+ * links, focus) is the brand green #68bf4d darkened to keep ≥ 4.5:1 contrast
+ * with white text; the primary (sidebar) is a deep green-tinted charcoal
+ * matching the site's ink #1e1e1e.
+ */
+:root {
+  --w-color-primary-hue: 150;
+  --w-color-primary-saturation: 12%;
+  --w-color-primary-lightness: 14%;
+
+  --w-color-secondary-hue: 106;
+  --w-color-secondary-saturation: 55%;
+  --w-color-secondary-lightness: 30%;
+
+  --lumora-brand: #68bf4d;
+}
+
+/* Sidebar logo: centred in Wagtail's branding circle, ink follows the theme. */
+.sidebar-wagtail-branding__icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-wagtail-branding .lumora-logo {
+  width: 55%;
+  height: auto;
+  color: #fff;
+}
+
+.lumora-login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--w-color-text-label);
+}
+
+.lumora-login-logo .lumora-logo {
+  width: 3.5rem;
+  height: auto;
+}
+
+.lumora-login-logo__wordmark {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.page404__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.page404__logo .lumora-logo {
+  width: 60%;
+  height: auto;
+}
+
+/* Related content panel (package ↔ page ↔ destination shortcuts). */
+.lumora-related {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--w-color-border-furniture);
+  border-radius: 0.3125rem;
+}
+
+.lumora-related__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.lumora-related__item + .lumora-related__item {
+  border-top: 1px solid var(--w-color-border-furniture);
+}
+
+.lumora-related__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lumora-related__label {
+  font-weight: 600;
+}
+
+.lumora-related__description {
+  color: var(--w-color-text-meta);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.lumora-related__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Dashboard quick actions. */
+.lumora-quick-actions {
+  margin-top: 2.5rem;
+}
+
+.lumora-quick-actions__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.lumora-quick-actions__link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--w-color-border-furniture);
+  border-radius: 0.3125rem;
+  color: var(--w-color-text-label);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lumora-quick-actions__link:hover,
+.lumora-quick-actions__link:focus-visible {
+  border-color: var(--w-color-secondary);
+  color: var(--w-color-secondary);
+}
+
+.lumora-quick-actions__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--w-color-secondary);
+}

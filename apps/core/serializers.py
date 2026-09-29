@@ -3,6 +3,8 @@ Plain-dict serializers shared by the block API representations and the DRF
 endpoints, so an image always looks the same wherever it appears in the API.
 """
 
+from urllib.parse import urlparse
+
 from django.conf import settings
 
 # Rendition specs generated for every image exposed through the API.
@@ -117,11 +119,12 @@ def serialize_page_ref(page):
     """A lightweight page reference — enough for the frontend to build a link."""
     if page is None:
         return None
+    full_url = page.specific_deferred.get_full_url()
     return {
         "id": page.pk,
         "title": page.title,
         "slug": page.slug,
         "type": page.specific_class._meta.label_lower if page.specific_class else None,
-        "url": page.get_url() or f"/{page.slug}/",
-        "full_url": page.get_full_url(),
+        "url": urlparse(full_url).path if full_url else f"/{page.slug}",
+        "full_url": full_url,
     }

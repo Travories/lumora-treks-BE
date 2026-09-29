@@ -1,0 +1,14 @@
+{% load wagtailadmin_tags %}
+<section class="lumora-quick-actions" aria-labelledby="lumora-quick-actions-title">
+    <h2 id="lumora-quick-actions-title" class="w-h4">Start here</h2>
+    <ul class="lumora-quick-actions__list">
+        {% for label, icon, url in actions %}
+            <li>
+                <a class="lumora-quick-actions__link" href="{{ url }}">
+                    {% icon name=icon classname="lumora-quick-actions__icon" %}
+                    <span>{{ label }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</section>

@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "apps.navigation",
     "apps.leads",
     "apps.accounts",
+    "apps.seed",
     # Wagtail
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
@@ -235,7 +236,11 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 # --------------------------------------------------------------------------
 # Wagtail
 # --------------------------------------------------------------------------
-WAGTAIL_SITE_NAME = "Lumora Treks CMS"
+WAGTAIL_SITE_NAME = "Lumora Admin"
+# The admin is branded as Lumora Admin (see templates/wagtailadmin/); Wagtail
+# release banners and upgrade notices are developer concerns, not editorial ones.
+WAGTAIL_ENABLE_WHATS_NEW_BANNER = False
+WAGTAIL_ENABLE_UPDATE_CHECK = False
 WAGTAILADMIN_BASE_URL = env("WAGTAILADMIN_BASE_URL", "http://localhost:8000")
 WAGTAILIMAGES_IMAGE_MODEL = "core.CustomImage"
 WAGTAILIMAGES_EXTENSIONS = ["gif", "jpg", "jpeg", "png", "webp", "avif", "svg"]
@@ -270,7 +275,13 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
 }
 
-FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", "http://localhost:3000")
+# The public Next.js site. Wagtail page URLs ("View live", API `html_url`,
+# SEO canonical URLs, rich-text page links) resolve against this host because
+# the CMS is headless — see apps/cms/models.HeadlessPageMixin.
+FRONTEND_BASE_URL = env(
+    "FRONTEND_BASE_URL",
+    "http://localhost:3000" if IS_DEVELOPMENT else "https://lumora.rivetsoft.com",
+).rstrip("/")
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", "")
 AUTH_TOKEN_TTL_DAYS = env_positive_int("AUTH_TOKEN_TTL_DAYS", 30)
 
@@ -286,6 +297,11 @@ CORS_ALLOWED_ORIGINS = env_list(
 
 CORS_ALLOW_CREDENTIALS = False
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", CORS_ALLOWED_ORIGINS)
+
+# Container start (docker/entrypoint.sh): when true, wipe the database and
+# seed it from apps/seed/data — once per version of the seed content. See
+# `python manage.py seed_database --help`.
+SEED_DATABASE = env_bool("SEED_DATABASE", False)
 
 # Optional shared secret for draft/preview fetches from the frontend.
 PREVIEW_TOKEN = env("PREVIEW_TOKEN", "")

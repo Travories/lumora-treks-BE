@@ -22,7 +22,7 @@ from django.core.validators import validate_email
 from django.utils import timezone
 from django.http import Http404, JsonResponse
 from django.db import IntegrityError, transaction
-from django.db.models import Case, Count, IntegerField, Prefetch, Q, Sum, Value, When
+from django.db.models import Case, IntegerField, Prefetch, Value, When
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from rest_framework import status, viewsets
@@ -32,7 +32,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from wagtail.models import Page, Site
 
-from apps.catalog.models import Destination, Package, PackageRatingSummary, Testimonial, TravelerReview
+from apps.catalog.models import Destination, Package, Testimonial, TravelerReview
+from apps.catalog.ratings import package_rating_values, recalculate_package_rating
 from apps.catalog.serializers import (
     TravelerReviewWriteSerializer,
     serialize_destination,
@@ -103,7 +104,7 @@ class DictModelViewSet(viewsets.ViewSet):
 class PackageViewSet(DictModelViewSet):
     queryset = (
         Package.objects.filter(is_active=True)
-        .select_related("image", "destination", "rating_summary")
+        .select_related("image", "destination__detail_page", "rating_summary")
         .prefetch_related("group_pricing")
     )
     serialize = staticmethod(serialize_package)
@@ -141,7 +142,7 @@ class PackageViewSet(DictModelViewSet):
 
 
 class DestinationViewSet(DictModelViewSet):
-    queryset = Destination.objects.all().select_related("image").prefetch_related(
+    queryset = Destination.objects.all().select_related("image", "detail_page").prefetch_related(
         Prefetch(
             "packages",
             queryset=Package.objects.filter(is_active=True)
@@ -159,7 +160,7 @@ class DestinationViewSet(DictModelViewSet):
                 Prefetch(
                     "packages",
                     queryset=Package.objects.filter(is_active=True)
-                    .select_related("image", "destination")
+                    .select_related("image", "destination__detail_page")
                     .prefetch_related("group_pricing"),
                     to_attr="active_packages",
                 )
@@ -248,41 +249,6 @@ def _serialize_traveler_review(review, request):
     }
 
 
-def _package_rating_values(package):
-    traveler = package.traveler_reviews.aggregate(total=Count("id"), total_rating=Sum("rating"))
-    testimonials = package.testimonials.aggregate(total=Count("id"), total_rating=Sum("rating"))
-    total = (traveler["total"] or 0) + (testimonials["total"] or 0)
-    rating_sum = (traveler["total_rating"] or 0) + (testimonials["total_rating"] or 0)
-    distribution = {
-        rating: package.traveler_reviews.filter(rating=rating).count()
-        + package.testimonials.filter(rating=rating).count()
-        for rating in range(1, 6)
-    }
-    return {
-        "total_reviews": total,
-        "rating_sum": rating_sum,
-        "average_rating": round(rating_sum / total, 1) if total else 0,
-        "one_star": distribution[1],
-        "two_star": distribution[2],
-        "three_star": distribution[3],
-        "four_star": distribution[4],
-        "five_star": distribution[5],
-    }
-
-
-def _recalculate_package_rating(package):
-    """Keep package cards and rating breakdowns correct after review changes."""
-
-    values = _package_rating_values(package)
-    PackageRatingSummary.objects.update_or_create(
-        package=package,
-        defaults=values,
-    )
-    package.rating = values["average_rating"]
-    package.review_count = values["total_reviews"]
-    package.save(update_fields=["rating", "review_count"])
-
-
 class PackageReviewView(APIView):
     """Public review listing plus authenticated one-review-per-user mutations."""
 
@@ -319,7 +285,7 @@ class PackageReviewView(APIView):
             )
         paginator = LumoraPagination()
         page = paginator.paginate_queryset(queryset, request, view=self)
-        values = _package_rating_values(package)
+        values = package_rating_values(package)
         return paginator.get_paginated_response(
             [_serialize_traveler_review(review, request) for review in page],
             extra={
@@ -348,7 +314,7 @@ class PackageReviewView(APIView):
             review = TravelerReview.objects.create(package=package, user=request.user, **serializer.validated_data)
         except IntegrityError:
             return Response({"detail": "You already have a review for this package. Update or delete it instead."}, status=status.HTTP_409_CONFLICT)
-        _recalculate_package_rating(package)
+        recalculate_package_rating(package)
         return Response({"review": _serialize_traveler_review(review, request)}, status=status.HTTP_201_CREATED)
 
     @transaction.atomic
@@ -364,7 +330,7 @@ class PackageReviewView(APIView):
         review.rating = serializer.validated_data["rating"]
         review.body = serializer.validated_data["body"]
         review.save(update_fields=["rating", "body", "updated_at"])
-        _recalculate_package_rating(package)
+        recalculate_package_rating(package)
         return Response({"review": _serialize_traveler_review(review, request)})
 
     @transaction.atomic
@@ -376,7 +342,7 @@ class PackageReviewView(APIView):
         if review is None:
             return Response({"detail": "Your review was not found."}, status=status.HTTP_404_NOT_FOUND)
         review.delete()
-        _recalculate_package_rating(package)
+        recalculate_package_rating(package)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

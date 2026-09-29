@@ -32,7 +32,7 @@ class Command(BaseCommand):
         apply = options["apply"]
         # Resolve home by type, not slug: production's home slug is "home-real",
         # so a hardcoded slug="home" lookup finds nothing and converts nothing.
-        # This mirrors how seed_lumora locates the home page.
+        # The home page is the only HomePage in the tree.
         home = HomePage.objects.first()
         if not home:
             self.stderr.write("Home page is missing; nothing converted.")

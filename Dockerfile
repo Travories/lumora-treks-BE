@@ -27,7 +27,5 @@ COPY . /app/
 # Expose port 7319
 EXPOSE 7319
 
-# Default command: collectstatic, migrate, and start Gunicorn on port 7319
-CMD python manage.py collectstatic --noinput && \
-    python manage.py migrate --noinput && \
-    gunicorn --bind 0.0.0.0:7319 --workers 3 --timeout 120 lumora.wsgi:application
+# collectstatic, migrate, optional seed (SEED_DATABASE), then Gunicorn on 7319
+CMD ["sh", "/app/docker/entrypoint.sh"]

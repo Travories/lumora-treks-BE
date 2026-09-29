@@ -116,8 +116,6 @@ def serialize_package(package, detail=False):
                     {"image": serialize_image(item.image), "caption": item.caption}
                     for item in package.gallery.all()
                 ],
-                "includes": package.includes_list,
-                "excludes": package.excludes_list,
                 "included_items": [
                     {"kind": item.kind, "text": item.text}
                     for item in package.included_items.all()

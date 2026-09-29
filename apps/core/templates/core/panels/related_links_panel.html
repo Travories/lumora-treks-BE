@@ -1,0 +1,20 @@
+{% load wagtailadmin_tags %}
+<ul class="lumora-related">
+    {% for item in items %}
+        <li class="lumora-related__item">
+            <div class="lumora-related__text">
+                <span class="lumora-related__label">{{ item.label }}</span>
+                {% if item.description %}<span class="lumora-related__description">{{ item.description }}</span>{% endif %}
+            </div>
+            {% if item.actions %}
+                <div class="lumora-related__actions">
+                    {% for action in item.actions %}
+                        <a class="button button-small button-secondary" href="{{ action.url }}"{% if action.external %} target="_blank" rel="noopener"{% endif %}>
+                            {% icon name=action.icon classname="icon" %}{{ action.label }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>

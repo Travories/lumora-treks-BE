@@ -1,0 +1,8 @@
+{% extends "wagtailadmin/login.html" %}
+{% block branding_login %}Sign in to Lumora Admin{% endblock %}
+{% block branding_logo %}
+    <div class="login-logo lumora-login-logo">
+        {% include "lumora_admin/logo.svg" %}
+        <span class="lumora-login-logo__wordmark">Lumora Admin</span>
+    </div>
+{% endblock %}

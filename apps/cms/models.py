@@ -6,16 +6,21 @@ editors compose any layout without a developer. The API exposes the body as
 JSON; the frontend maps each block's `component` to a React component.
 """
 
+from django.conf import settings
 from django.db import models
+from django.shortcuts import redirect
+from django.urls import reverse
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel, ObjectList, TabbedInterface
 from wagtail.api import APIField
 from wagtail.fields import StreamField
 from wagtail.models import Page
 from wagtail.search import index
 
+from apps.catalog.editorial import destination_page_related_items, package_page_related_items
 from apps.catalog.serializers import serialize_destination, serialize_package
 from apps.cms.blocks import SECTION_BLOCKS, section_blocks
 from apps.cms.blocks.article import ARTICLE_BLOCKS
+from apps.core.panels import RelatedLinksPanel
 from apps.core.serializers import serialize_image
 
 
@@ -25,7 +30,45 @@ def page_body(*block_names):
     return StreamField(section_blocks(*block_names), blank=True, collapsed=True)
 
 
-class BasePage(Page):
+class HeadlessPageMixin:
+    """
+    Pages are rendered by the Next.js frontend, never by Wagtail templates.
+
+    Page URLs therefore resolve to `FRONTEND_BASE_URL` + the page's path, so
+    "View live" in the admin, the API's `html_url`, SEO canonical URLs and
+    rich-text page links all point at the public site. The CMS host never
+    serves a page, so a host-relative URL is never correct: `get_url` always
+    returns the absolute frontend URL.
+    """
+
+    # Wagtail's preview panel renders Django templates, which a headless site
+    # doesn't have — hide it rather than show "Preview not available".
+    preview_modes = []
+
+    def get_url_parts(self, request=None):
+        url_parts = super().get_url_parts(request=request)
+        if url_parts is None:
+            return None
+        site_id, _root_url, page_path = url_parts
+        serve_prefix = reverse("wagtail_serve", args=[""])
+        if page_path.startswith(serve_prefix):
+            page_path = "/" + page_path[len(serve_prefix):]
+        # Next.js routes have no trailing slash.
+        if len(page_path) > 1:
+            page_path = page_path.rstrip("/")
+        return site_id, settings.FRONTEND_BASE_URL, page_path
+
+    def get_url(self, request=None, current_site=None):
+        return self.get_full_url(request=request)
+
+    url = property(get_url)
+
+    def serve(self, request, *args, **kwargs):
+        # Old links to the CMS host (e.g. /cms-preview/about/) land on the site.
+        return redirect(self.get_full_url(request=request))
+
+
+class BasePage(HeadlessPageMixin, Page):
     """Shared SEO/social fields and body StreamField for every Lumora page."""
 
     # The StreamField is the editable page outline: editors see Hero, Stats,
@@ -148,7 +191,6 @@ class StandardPage(BasePage):
 
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
     edit_handler = page_edit_handler(
         Page.content_panels + [FieldPanel("intro")],
         [FieldPanel("body", heading="Screen sections — top to bottom")],
@@ -166,10 +208,6 @@ class ContactPage(BasePage):
     body = page_body("contact_hero", "contact_form", "why_choose_us", "authentic_experiences", "faq")
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [
-        FieldPanel("intro"),
-        FieldPanel("body", heading="Page sections"),
-    ]
     api_fields = BasePage.api_fields + [APIField("intro")]
     edit_handler = page_edit_handler(
         Page.content_panels + [FieldPanel("intro")],
@@ -190,10 +228,6 @@ class PrivacyPage(BasePage):
     body = page_body("page_hero", "rich_text", "faq", "cta_banner")
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [
-        FieldPanel("intro"),
-        FieldPanel("body", heading="Page sections"),
-    ]
     api_fields = BasePage.api_fields + [APIField("intro")]
     edit_handler = page_edit_handler(
         Page.content_panels + [FieldPanel("intro")],
@@ -215,7 +249,6 @@ class EnquiryPage(BasePage):
     body = page_body("page_hero", "package_enquiry", "cta_banner")
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("intro")]
     edit_handler = page_edit_handler(
         Page.content_panels + [FieldPanel("intro")],
@@ -276,7 +309,6 @@ class DestinationIndexPage(BasePage):
     )
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("intro")]
 
     subpage_types = ["cms.DestinationDetailPage"]
@@ -303,11 +335,12 @@ class DestinationDetailPage(BasePage):
     destination = models.OneToOneField(
         "catalog.Destination", on_delete=models.PROTECT, related_name="detail_page"
     )
-    content_panels = Page.content_panels + [FieldPanel("destination"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("destination_id"), APIField("destination_data")]
     parent_page_types = ["cms.DestinationIndexPage"]
     edit_handler = page_edit_handler(
-        Page.content_panels + [FieldPanel("destination")],
+        [RelatedLinksPanel(destination_page_related_items, heading="Related content")]
+        + Page.content_panels
+        + [FieldPanel("destination")],
         [FieldPanel("body", heading="Screen sections — top to bottom")],
     )
 
@@ -319,8 +352,12 @@ class DestinationDetailPage(BasePage):
         return serialize_destination(self.destination, detail=True)
 
 
-class PackageFolderPage(Page):
-    """Structural URL segment: `/packages/<package-slug>/`."""
+class PackageFolderPage(HeadlessPageMixin, Page):
+    """Structural URL segment: `/packages/<package-slug>/`.
+
+    Created automatically with each package (see apps/catalog/signals.py);
+    editors work on the package detail page inside it.
+    """
 
     parent_page_types = ["cms.PackageIndexPage"]
     subpage_types = ["cms.PackageDetailPage"]
@@ -344,11 +381,12 @@ class PackageDetailPage(BasePage):
     package = models.OneToOneField(
         "catalog.Package", on_delete=models.PROTECT, related_name="detail_page"
     )
-    content_panels = Page.content_panels + [FieldPanel("package"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("package_id"), APIField("package_data")]
     parent_page_types = ["cms.PackageFolderPage"]
     edit_handler = page_edit_handler(
-        Page.content_panels + [FieldPanel("package")],
+        [RelatedLinksPanel(package_page_related_items, heading="Related content")]
+        + Page.content_panels
+        + [FieldPanel("package")],
         [FieldPanel("body", heading="Screen sections — top to bottom")],
     )
 
@@ -370,14 +408,6 @@ class PackageIndexPage(BasePage):
     intro = models.TextField(blank=True)
     packages_per_page = models.PositiveIntegerField(default=12)
     show_filters = models.BooleanField(default=True)
-
-    content_panels = Page.content_panels + [
-        FieldPanel("intro"),
-        MultiFieldPanel(
-            [FieldPanel("packages_per_page"), FieldPanel("show_filters")], heading="Listing options"
-        ),
-        FieldPanel("body", heading="Page sections"),
-    ]
 
     api_fields = BasePage.api_fields + [
         APIField("intro"),
@@ -403,7 +433,6 @@ class BlogIndexPage(BasePage):
     body = page_body("page_hero", "blog_listing", "cta_banner")
     intro = models.TextField(blank=True)
 
-    content_panels = Page.content_panels + [FieldPanel("intro"), FieldPanel("body", heading="Page sections")]
     api_fields = BasePage.api_fields + [APIField("intro")]
     subpage_types = ["cms.BlogPostPage"]
     edit_handler = page_edit_handler(
@@ -455,27 +484,6 @@ class BlogPostPage(BasePage):
     )
     read_time_minutes = models.PositiveIntegerField(null=True, blank=True)
     article_body = StreamField(ARTICLE_BLOCKS, blank=True, collapsed=False, verbose_name="Article")
-
-    content_panels = Page.content_panels + [
-        FieldPanel("excerpt"),
-        FieldPanel("hero_image"),
-        MultiFieldPanel(
-            [FieldPanel("category"), FieldPanel("featured")],
-            heading="Classification",
-        ),
-        MultiFieldPanel(
-            [
-                FieldPanel("published_date"),
-                FieldPanel("author_name"),
-                FieldPanel("author_role"),
-                FieldPanel("author_avatar"),
-                FieldPanel("read_time_minutes"),
-            ],
-            heading="Meta",
-        ),
-        FieldPanel("article_body"),
-        FieldPanel("body", heading="Extra sections"),
-    ]
 
     api_fields = BasePage.api_fields + [
         APIField("excerpt"),

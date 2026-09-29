@@ -17,11 +17,13 @@ from django.db import models
 from django.utils.text import slugify
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
-from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
+from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel, ObjectList, TabbedInterface
 from wagtail.fields import RichTextField
 from wagtail.models import Orderable
 from wagtail.search import index
-from wagtail.snippets.models import register_snippet
+
+from apps.catalog.editorial import destination_related_items, package_related_items
+from apps.core.panels import RelatedLinksPanel
 
 
 class SlugMixin(models.Model):
@@ -62,14 +64,15 @@ class Destination(index.Indexed, SlugMixin, models.Model):
     region = models.CharField(max_length=120, blank=True, help_text="e.g. Annapurna, Everest.")
     best_season = models.CharField(max_length=120, blank=True)
     default_layout = models.CharField(max_length=20, choices=LAYOUT_CHOICES, default="small")
-    link_page = models.ForeignKey(
-        "wagtailcore.Page", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    external_url = models.URLField(
+        blank=True,
+        help_text="Only used when this destination has no destination page of its own.",
     )
-    external_url = models.URLField(blank=True)
     is_featured = models.BooleanField(default=False)
     sort_order = models.IntegerField(default=0)
 
     panels = [
+        RelatedLinksPanel(destination_related_items, heading="Related content"),
         MultiFieldPanel(
             [FieldPanel("title"), FieldPanel("slug"), FieldPanel("subtitle"), FieldPanel("description"), FieldPanel("highlights")],
             heading="Content",
@@ -79,10 +82,7 @@ class Destination(index.Indexed, SlugMixin, models.Model):
             [FieldPanel("region"), FieldPanel("best_season"), FieldPanel("default_layout")],
             heading="Metadata",
         ),
-        MultiFieldPanel(
-            [FieldPanel("link_page"), FieldPanel("external_url")],
-            heading="Link target",
-        ),
+        FieldPanel("external_url"),
         MultiFieldPanel([FieldPanel("is_featured"), FieldPanel("sort_order")], heading="Ordering"),
     ]
 
@@ -101,13 +101,13 @@ class Destination(index.Indexed, SlugMixin, models.Model):
 
     @property
     def href(self):
-        # Point at the public Next.js route, NOT link_page.get_url(): Wagtail
-        # serves its own pages under /cms-preview/ (see lumora/urls.py), so
-        # get_url() returns a preview path that 404s on the frontend. Mirror
-        # Package.public_url, which already returns a clean frontend route.
-        if self.link_page_id:
-            return f"/destinations/{self.slug}"
-        return self.external_url or None
+        # The public Next.js route when the destination has its own page
+        # (mirrors Package.public_url), otherwise the optional external link.
+        try:
+            self.detail_page
+        except type(self).detail_page.RelatedObjectDoesNotExist:
+            return self.external_url or None
+        return f"/destinations/{self.slug}"
 
 
 class PackageHighlight(Orderable):
@@ -262,8 +262,6 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     destination = models.ForeignKey(
         "catalog.Destination", null=True, blank=True, on_delete=models.SET_NULL, related_name="packages"
     )
-    includes = models.TextField(blank=True, help_text="One item per line.")
-    excludes = models.TextField(blank=True, help_text="One item per line.")
     is_popular = models.BooleanField(default=False, help_text="Shown in the Popular Packages carousel.")
     is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
@@ -276,38 +274,76 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
     )
     booking_url = models.URLField(blank=True)
 
-    panels = [
-        MultiFieldPanel(
-            [FieldPanel("title"), FieldPanel("slug"), FieldPanel("public_code", read_only=True), FieldPanel("category"), FieldPanel("summary"), FieldPanel("description")],
-            heading="Content",
-        ),
-        FieldPanel("image"),
-        InlinePanel("gallery", label="Gallery image"),
-        MultiFieldPanel(
-            [
-                FieldPanel("price"),
-                FieldPanel("discount_price"),
-                FieldPanel("currency"),
-                FieldPanel("duration"),
-                FieldPanel("duration_days"),
-                FieldPanel("people_count"),
-                FieldPanel("difficulty"),
-            ],
-            heading="Package facts",
-        ),
-        InlinePanel("group_pricing", label="Group price", heading="Group pricing per person"),
-        FieldPanel("destination"),
-        InlinePanel("highlights", label="Highlight"),
-        InlinePanel("itinerary", label="Itinerary day"),
-        MultiFieldPanel(
-            [FieldPanel("is_popular"), FieldPanel("is_active"), FieldPanel("sort_order")],
-            heading="Visibility",
-        ),
-        MultiFieldPanel(
-            [FieldPanel("source"), FieldPanel("external_id"), FieldPanel("booking_url")],
-            heading="Booking / SDK link",
-        ),
-    ]
+    # Tabs follow how an editor thinks about a package: what it is, what it
+    # costs, what happens day by day, how it looks, and whether it is shown.
+    edit_handler = TabbedInterface(
+        [
+            ObjectList(
+                [
+                    RelatedLinksPanel(package_related_items, heading="Related content"),
+                    MultiFieldPanel(
+                        [
+                            FieldPanel("title"),
+                            FieldPanel("slug"),
+                            FieldPanel("public_code", read_only=True),
+                            FieldPanel("category"),
+                            FieldPanel("destination"),
+                        ],
+                        heading="Package",
+                    ),
+                    FieldPanel("summary"),
+                    FieldPanel("description"),
+                    FieldPanel("image"),
+                ],
+                heading="Overview",
+            ),
+            ObjectList(
+                [
+                    MultiFieldPanel(
+                        [FieldPanel("price"), FieldPanel("discount_price"), FieldPanel("currency")],
+                        heading="Price",
+                    ),
+                    InlinePanel("group_pricing", label="Group price", heading="Group pricing per person"),
+                    MultiFieldPanel(
+                        [
+                            FieldPanel("duration"),
+                            FieldPanel("duration_days"),
+                            FieldPanel("people_count"),
+                            FieldPanel("difficulty"),
+                        ],
+                        heading="Trip facts",
+                    ),
+                ],
+                heading="Pricing & facts",
+            ),
+            ObjectList(
+                [
+                    InlinePanel("highlights", label="Highlight", heading="Highlights"),
+                    InlinePanel("itinerary", label="Itinerary day", heading="Itinerary"),
+                    InlinePanel(
+                        "included_items",
+                        label="Inclusion or exclusion",
+                        heading="What's included / excluded",
+                    ),
+                ],
+                heading="Itinerary & inclusions",
+            ),
+            ObjectList([InlinePanel("gallery", label="Gallery image", heading="Gallery")], heading="Gallery"),
+            ObjectList(
+                [
+                    MultiFieldPanel(
+                        [FieldPanel("is_active"), FieldPanel("is_popular"), FieldPanel("sort_order")],
+                        heading="Visibility",
+                    ),
+                    MultiFieldPanel(
+                        [FieldPanel("source"), FieldPanel("external_id"), FieldPanel("booking_url")],
+                        heading="Booking / SDK link",
+                    ),
+                ],
+                heading="Visibility & booking",
+            ),
+        ]
+    )
 
     search_fields = [
         index.SearchField("title"),
@@ -344,12 +380,11 @@ class Package(index.Indexed, SlugMixin, ClusterableModel):
         return f"/packages/{self.slug}/{self.public_code}"
 
     @property
-    def includes_list(self):
-        return [line.strip() for line in self.includes.splitlines() if line.strip()]
-
-    @property
-    def excludes_list(self):
-        return [line.strip() for line in self.excludes.splitlines() if line.strip()]
+    def price_label(self):
+        """Admin listing label, e.g. "USD 650" or "USD 585 (was 650)"."""
+        if self.discount_price is not None:
+            return f"{self.currency} {self.discount_price:,.0f} (was {self.price:,.0f})"
+        return f"{self.currency} {self.price:,.0f}"
 
 
 class Testimonial(index.Indexed, models.Model):
@@ -456,9 +491,4 @@ class TravelerReview(models.Model):
     def __str__(self):
         return f"{self.package} — {self.user} ({self.rating}/5)"
 
-
-register_snippet(Destination)
-register_snippet(Testimonial)
-# Package is registered via a dedicated SnippetViewSet in apps/catalog/wagtail_hooks.py
-# (adds a top-level "Packages" admin menu). Do not also register it here — a model can
-# only be registered once.
+# Admin registration (menus, listings, filters) lives in apps/catalog/wagtail_hooks.py.

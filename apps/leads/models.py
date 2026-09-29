@@ -56,7 +56,8 @@ class LeadSubmission(models.Model):
 
     class Meta:
         ordering = ["-submitted_at"]
-        verbose_name = "lead submission"
+        verbose_name = "lead"
+        verbose_name_plural = "leads"
 
     def __str__(self):
         who = self.name or self.email or "Anonymous"

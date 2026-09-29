@@ -1,0 +1,14 @@
+# Keep secrets and local state out of the image; runtime config comes from
+# docker-compose's env_file and mounted volumes.
+.git
+.env
+.env.*
+!.env.example
+.venv
+**/__pycache__
+**/*.pyc
+db.sqlite3
+media/
+staticfiles/
+node_modules/
+package-lock.json

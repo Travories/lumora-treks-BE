@@ -8,7 +8,7 @@ to a `PackageFolderPage` (slug = package slug) holding a `PackageDetailPage`
 Rather than require an editor to hand-build that page tree (or re-run a seed
 command), this handler creates and publishes it automatically on save. It runs
 on every save (create-if-missing) so it self-heals a package that never got a
-page. The tree-building mirrors `apps/cms/management/commands/seed_lumora.py`.
+page. `seed_database` uses the same function for seeded packages.
 """
 
 import logging
@@ -32,7 +32,9 @@ def _default_block_settings(anchor_id):
     }
 
 
-def _ensure_detail_page(package):
+def ensure_detail_page(package):
+    """Create and publish the package's public page if it doesn't exist yet."""
+
     # Imported lazily: the cms app depends on catalog, so importing its page
     # models at module load time would create a circular import.
     from apps.cms.models import PackageDetailPage, PackageFolderPage, PackageIndexPage
@@ -45,7 +47,7 @@ def _ensure_detail_page(package):
     if index is None:
         logger.warning(
             "No PackageIndexPage (slug='packages') found; skipping auto-creation "
-            "of the detail page for package %r. Run seed_lumora or create the "
+            "of the detail page for package %r. Run seed_database or create the "
             "packages index page.",
             package.slug,
         )
@@ -111,7 +113,7 @@ def _ensure_detail_page(package):
 def _ensure_detail_page_safe(package):
     """Never let auto-creation of the public page break a Package save."""
     try:
-        _ensure_detail_page(package)
+        ensure_detail_page(package)
     except Exception:  # pragma: no cover — defensive: log, don't propagate
         logger.exception(
             "Failed to auto-create the detail page for package %r; the package "
@@ -122,7 +124,7 @@ def _ensure_detail_page_safe(package):
 
 @receiver(post_save, sender=Package, dispatch_uid="catalog_package_autocreate_detail_page")
 def create_package_detail_page(sender, instance, created, **kwargs):
-    # Runs on every save, not just creation: `_ensure_detail_page` is a cheap
+    # Runs on every save, not just creation: `ensure_detail_page` is a cheap
     # no-op once the page exists, so this self-heals a package whose page was
     # never created (e.g. saved before the packages index existed, or a
     # transient failure during the original create).

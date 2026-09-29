@@ -4,7 +4,6 @@ from django.db import models
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.images.models import AbstractImage, AbstractRendition, Image
 from wagtail.search import index
-from wagtail.snippets.models import register_snippet
 
 
 class CustomImage(AbstractImage):
@@ -108,5 +107,3 @@ class Video(index.Indexed, models.Model):
     def url(self):
         return self.file.url if self.file else self.external_url
 
-
-register_snippet(Video)
