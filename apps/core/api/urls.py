@@ -20,5 +20,6 @@ urlpatterns = [
     path("leads/", views.LeadCreateView.as_view(), name="lead-create"),
     path("reviews/", views.PackageReviewView.as_view(), name="package-reviews"),
     path("page-by-path/", views.page_by_path, name="page-by-path"),
+    path("media/<path:name>", views.media_redirect, name="media-redirect"),
     path("", include(router.urls)),
 ]

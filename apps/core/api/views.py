@@ -10,6 +10,7 @@ Custom REST endpoints that sit next to the Wagtail pages API:
     /api/v2/leads/           POST an enquiry / newsletter signup
     /api/v2/auth/            Google sign-in and traveler onboarding
     /api/v2/page-by-path/    full page payload for a frontend route
+    /api/v2/media/<name>     stable URL for a stored image/video (redirects to storage)
 """
 
 import datetime
@@ -20,11 +21,13 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils import timezone
-from django.http import Http404, JsonResponse
+from django.core.files.storage import default_storage
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.db import IntegrityError, transaction
 from django.db.models import Case, IntegerField, Prefetch, Value, When
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_safe
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -602,3 +605,24 @@ def page_by_path(request):
     request.wagtailapi_router = api_router
     view = LumoraPagesAPIViewSet.as_view({"get": "detail_view"})
     return view(request, pk=page.pk)
+
+
+# Signed URLs stay cached (CachedS3Storage.signed_url) with ≥10% of their
+# lifetime left; the browser may reuse this redirect for less than that.
+MEDIA_REDIRECT_MAX_AGE = 300
+
+
+@require_safe
+def media_redirect(request, name):
+    """
+    The permanent URL of a stored image or video. Redirects to a short-lived
+    signed URL, so pages and image optimizers can cache media links forever
+    while the bucket stays private.
+    """
+    storage = default_storage
+    prefixes = getattr(storage, "PROXIED_PREFIXES", ())
+    if not name.startswith(prefixes) or ".." in name.split("/"):
+        raise Http404
+    response = HttpResponseRedirect(storage.signed_url(name))
+    response["Cache-Control"] = f"public, max-age={MEDIA_REDIRECT_MAX_AGE}"
+    return response

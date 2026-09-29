@@ -128,3 +128,55 @@ class LumoraAdminTests(TestCase):
         for response in (by_filter, by_search):
             self.assertContains(response, package.title)
             self.assertNotContains(response, "Chitwan Safari")
+
+
+S3_SETTINGS = {
+    "STORAGES": {
+        "default": {"BACKEND": "apps.core.storage.CachedS3Storage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+    "AWS_STORAGE_BUCKET_NAME": "lumora-test",
+    "AWS_ACCESS_KEY_ID": "test-key",
+    "AWS_SECRET_ACCESS_KEY": "test-secret",
+    "AWS_S3_ENDPOINT_URL": "https://s3.example.com",
+    "AWS_S3_REGION_NAME": "garage",
+    "AWS_QUERYSTRING_AUTH": True,
+    "MEDIA_BASE_URL": "https://api.example.com",
+}
+
+
+@override_settings(**S3_SETTINGS)
+class StableMediaUrlTests(TestCase):
+    """Signed S3 URLs expire; cached pages must only ever see stable media URLs."""
+
+    def test_images_and_videos_get_stable_urls(self):
+        from django.core.files.storage import default_storage
+
+        for name in ("original_images/hero.webp", "images/hero.fill-800x600.webp", "videos/intro.mp4"):
+            with self.subTest(name=name):
+                self.assertEqual(default_storage.url(name), f"/api/v2/media/{name}")
+
+    def test_api_serializes_absolute_stable_urls(self):
+        from apps.core.serializers import absolute_url
+        from django.core.files.storage import default_storage
+
+        self.assertEqual(
+            absolute_url(default_storage.url("original_images/hero.webp")),
+            "https://api.example.com/api/v2/media/original_images/hero.webp",
+        )
+
+    def test_stable_url_redirects_to_a_signed_url(self):
+        response = self.client.get("/api/v2/media/original_images/hero.webp")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith("https://s3.example.com/lumora-test/original_images/hero.webp?"))
+        self.assertIn("X-Amz-Signature=", response["Location"])
+
+    def test_only_website_media_is_exposed(self):
+        for name in ("documents/contract.pdf", "original_images/../documents/contract.pdf", "secret.txt"):
+            with self.subTest(name=name):
+                self.assertEqual(self.client.get(f"/api/v2/media/{name}").status_code, 404)
+
+    def test_other_files_keep_signed_urls(self):
+        from django.core.files.storage import default_storage
+
+        self.assertIn("X-Amz-Signature=", default_storage.url("documents/contract.pdf"))
