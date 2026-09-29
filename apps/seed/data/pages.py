@@ -107,8 +107,8 @@ def home_body(ref):
             heading="Travel beyond destinations",
             slides=[
                 {"image": ref.image("hero"), "alt": "Nepal mountain landscape"},
-                {"image": ref.image("region-everest"), "alt": "Everest region peaks"},
-                {"image": ref.image("region-annapurna"), "alt": "Annapurna region trail"},
+                {"image": ref.image("everest-region"), "alt": "Ama Dablam in the Everest region"},
+                {"image": ref.image("annapurna-region"), "alt": "Annapurna South above Ghandruk"},
             ],
             mountain_cutout=True,
             show_search=True,
@@ -165,14 +165,14 @@ def home_body(ref):
             description_highlight="offer authentic experiences, breathtaking scenery, and unforgettable memories.",
             show_arrows=True,
             small_cards=[
-                destination_card(ref, "dhorpatan-region", "exp-dhorpatan"),
-                destination_card(ref, "patan", "exp-patan"),
-                destination_card(ref, "pokhara", "exp-pokhara"),
+                destination_card(ref, "patan", "patan"),
+                destination_card(ref, "pokhara", "pokhara"),
+                destination_card(ref, "rara-lake", "rara-lake"),
             ],
             feature_card=destination_card(
                 ref,
                 "dhorpatan-region",
-                "exp-big",
+                "dhorpatan-meadow",
                 variant="big-package",
                 layout="large",
                 description=(
@@ -201,7 +201,7 @@ def home_body(ref):
                         "adventure, ensuring every trip is truly unforgettable."
                     ),
                     "description_highlight": "",
-                    "image": ref.image("why-circle-1"),
+                    "image": ref.image("machhapuchhre-sunrise"),
                     "link": link(),
                 },
                 {
@@ -213,7 +213,7 @@ def home_body(ref):
                         "experiences, we handle every detail so you can simply enjoy the journey."
                     ),
                     "description_highlight": "",
-                    "image": ref.image("why-circle-2"),
+                    "image": ref.image("teahouse"),
                     "link": link(),
                 },
                 {
@@ -225,7 +225,7 @@ def home_body(ref):
                         "insider recommendations that help you discover destinations like never before."
                     ),
                     "description_highlight": "",
-                    "image": ref.image("why-circle-3"),
+                    "image": ref.image("trekkers-guide"),
                     "link": link(),
                 },
             ],
@@ -241,11 +241,11 @@ def home_body(ref):
             variant="welcome",
             source="selected",
             items=[
-                destination_card(ref, "dhorpatan-region", "dest-dhorpatan"),
-                destination_card(ref, "poon-hill", "dest-poonhills", variant="big-package", layout="large"),
-                destination_card(ref, "annapurna-region", "dest-annapurna"),
-                destination_card(ref, "chitwan-safari", "dest-chitwan"),
-                destination_card(ref, "kathmandu", "dest-kathmandu"),
+                destination_card(ref, "dhorpatan-region", "dhorpatan-region"),
+                destination_card(ref, "poon-hill", "poon-hill", variant="big-package", layout="large"),
+                destination_card(ref, "annapurna-region", "annapurna-region"),
+                destination_card(ref, "chitwan-safari", "chitwan"),
+                destination_card(ref, "kathmandu", "kathmandu"),
             ],
             limit=6,
             settings=section("regions"),

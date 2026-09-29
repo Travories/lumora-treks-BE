@@ -222,12 +222,12 @@ class Seeder:
         }
 
     def seed_images(self):
-        for key, (title, alt_text) in IMAGES.items():
+        for key, meta in IMAGES.items():
             path = MEDIA_DIR / f"{key}.webp"
             if not path.exists():
                 raise SeedError(f"Missing seed image file {path}")
             with path.open("rb") as handle:
-                image = CustomImage(title=title, alt_text=alt_text)
+                image = CustomImage(title=meta["title"], alt_text=meta["alt"], credit=meta["credit"])
                 image.file = ImageFile(handle, name=path.name)
                 image.save()
             self.images[key] = image

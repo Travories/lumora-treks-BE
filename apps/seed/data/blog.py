@@ -18,7 +18,7 @@ POSTS = [
             "Why the most rewarding way through the Annapurna region isn't the fastest one — "
             "a field guide to walking with intention."
         ),
-        "image": "pkg-annapurna",
+        "image": "annapurna-trail",
         "category": "Trekking",
         "author": "aarav",
         "featured": True,
@@ -32,7 +32,7 @@ POSTS = [
             "Temples, courtyards, and living history — how to experience the old heart of the "
             "city before the crowds arrive."
         ),
-        "image": "dest-kathmandu",
+        "image": "kathmandu-square",
         "category": "Culture",
         "author": "kiran",
         "featured": False,
@@ -43,7 +43,7 @@ POSTS = [
         "slug": "what-to-eat-on-the-trail",
         "title": "What to Eat on the Trail: A Tea-House Menu",
         "excerpt": "Dal bhat power, garlic soup for altitude, and the quiet ritual of milk tea at 3,000 metres.",
-        "image": "exp-patan",
+        "image": "dal-bhat",
         "category": "Food & Stays",
         "author": "mira",
         "featured": False,
@@ -54,7 +54,7 @@ POSTS = [
         "slug": "the-poon-hill-sunrise-is-worth-the-alarm",
         "title": "The Poon Hill Sunrise Is Worth the Alarm",
         "excerpt": "A 4am start, a candle-lit climb, and one of the most generous mountain panoramas in the world.",
-        "image": "dest-poonhills",
+        "image": "poon-hill-sunrise",
         "category": "Trekking",
         "author": "aarav",
         "featured": False,
@@ -65,7 +65,7 @@ POSTS = [
         "slug": "the-only-packing-list-you-need",
         "title": "The Only Himalayan Packing List You Need",
         "excerpt": "Layers, not luggage. Everything that earns its place in your pack — and the things that don't.",
-        "image": "pkgp-4",
+        "image": "trail-machhapuchhre",
         "category": "Guides",
         "author": "mira",
         "featured": False,
@@ -79,7 +79,7 @@ POSTS = [
             "What a night in a Gurung homestay taught us about hospitality, and why we build it "
             "into every trip."
         ),
-        "image": "exp-dhorpatan",
+        "image": "ghandruk",
         "category": "Culture",
         "author": "kiran",
         "featured": False,
@@ -93,7 +93,7 @@ POSTS = [
             "Autumn clarity vs. spring blooms vs. quiet-season solitude — an honest "
             "month-by-month breakdown."
         ),
-        "image": "dest-annapurna",
+        "image": "abc-sunset",
         "category": "Guides",
         "author": "aarav",
         "featured": False,
@@ -117,8 +117,8 @@ def index_body(ref):
             "page_hero",
             title="Stories & Guides",
             subtitle="Field notes and trekking guides from the trail — stories worth carrying home.",
-            image=ref.image("exp-big"),
-            image_alt="Himalayan trail at golden hour",
+            image=ref.image("annapurna-trail"),
+            image_alt="Snowy peaks of the Annapurna sanctuary",
             image_width=620,
             image_height=460,
             show_search=False,
@@ -179,8 +179,8 @@ def article_body(title, ref):
         {
             "type": "image",
             "value": {
-                "image": ref.image("exp-big"),
-                "alt": "Golden light over the Himalayan foothills",
+                "image": ref.image("machhapuchhre-sunrise"),
+                "alt": "Sun rays behind Machhapuchhre at dawn",
                 "caption": "First light on the ridge — the reward for an early start.",
             },
         },

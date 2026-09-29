@@ -4,7 +4,7 @@ DESTINATIONS = [
     {
         "slug": "annapurna-circuit",
         "title": "Annapurna Circuit",
-        "image": "pkg-annapurna",
+        "image": "annapurna-circuit",
         "subtitle": "A legendary Himalayan journey through changing valleys and high passes.",
         "description": (
             "The Annapurna Circuit moves from subtropical river valleys into dry Himalayan landscapes, passing traditional villages and dramatic mountain walls. It is best known for the high Thorong La crossing and the variety of culture and scenery along the route."
@@ -21,7 +21,7 @@ DESTINATIONS = [
     {
         "slug": "annapurna-region",
         "title": "Annapurna Region",
-        "image": "region-annapurna",
+        "image": "annapurna-region",
         "subtitle": "Teahouse trails, Gurung villages, and the Annapurna Sanctuary.",
         "description": (
             "The Annapurna region combines welcoming mountain villages with some of Nepal's most rewarding Himalayan walking. Travel through rhododendron forest and stone settlements toward wide views of Machhapuchhre, Annapurna South, and the sanctuary."
@@ -38,7 +38,7 @@ DESTINATIONS = [
     {
         "slug": "poon-hill",
         "title": "Poon Hill",
-        "image": "dest-poonhills",
+        "image": "poon-hill",
         "subtitle": "A compact Annapurna trek for a remarkable Himalayan sunrise.",
         "description": (
             "Poon Hill is a classic short trek above Ghorepani. Its pre-dawn viewpoint opens across Dhaulagiri, Annapurna South, Hiunchuli, and Machhapuchhre, with village trails and rhododendron forest along the way."
@@ -55,7 +55,7 @@ DESTINATIONS = [
     {
         "slug": "rara-lake",
         "title": "Rara Lake",
-        "image": "region-rara-lake",
+        "image": "rara-lake",
         "subtitle": "Quiet water, far-west hills, and Nepal's largest alpine lake.",
         "description": (
             "Rara Lake National Park rewards the journey west with deep-blue water, forested slopes, and a calmer rhythm than Nepal's busier trekking corridors. It is ideal for lakeside walks, birdlife, and wide open viewpoints."
@@ -72,7 +72,7 @@ DESTINATIONS = [
     {
         "slug": "kathmandu-pokhara",
         "title": "Kathmandu & Pokhara",
-        "image": "exp-pokhara",
+        "image": "pokhara-valley",
         "subtitle": "Living heritage in Kathmandu, followed by Pokhara's lakeside calm.",
         "description": (
             "This route connects Kathmandu's historic squares and living temples with Pokhara's relaxed lakefront and mountain views. It is designed for travelers who want a balanced first journey through Nepal without a high-altitude trek."
@@ -89,7 +89,7 @@ DESTINATIONS = [
     {
         "slug": "bandipur",
         "title": "Bandipur",
-        "image": "region-bandipur",
+        "image": "bandipur",
         "subtitle": "A preserved hill town with Newari character and Himalayan views.",
         "description": (
             "Bandipur sits on a ridge between Kathmandu and Pokhara, with pedestrian lanes, traditional Newari houses, and wide views toward the Annapurna range. It is a peaceful stop for culture, short walks, and slower travel."
@@ -102,7 +102,7 @@ DESTINATIONS = [
     {
         "slug": "kathmandu",
         "title": "Kathmandu",
-        "image": "region-kathmandu",
+        "image": "kathmandu",
         "subtitle": "Living heritage, busy bazaars, and a gateway to Nepal.",
         "description": (
             "Kathmandu brings together historic squares, Buddhist stupas, Hindu temples, workshops, and vibrant neighbourhoods. It is the natural starting point for most journeys in Nepal and rewards time beyond the airport transfer."
@@ -119,7 +119,7 @@ DESTINATIONS = [
     {
         "slug": "swayambhunath",
         "title": "Swayambhunath",
-        "image": "region-swayambhunath",
+        "image": "swayambhunath",
         "subtitle": "An ancient hilltop stupa overlooking the Kathmandu Valley.",
         "description": (
             "Swayambhunath, often called the Monkey Temple, is one of the Kathmandu Valley's most recognisable sacred sites. Its white dome, watchful Buddha eyes, prayer flags, and hilltop views make it a memorable cultural stop."
@@ -136,7 +136,7 @@ DESTINATIONS = [
     {
         "slug": "everest-region",
         "title": "Everest Region",
-        "image": "region-everest",
+        "image": "everest-region",
         "subtitle": "High Himalayan trails beneath the world's tallest mountains.",
         "description": (
             "The Everest region is shaped by Sherpa culture, suspension bridges, alpine valleys, and iconic views of Everest, Lhotse, and Ama Dablam. Routes range from village stays to demanding high-altitude expeditions."
@@ -153,7 +153,7 @@ DESTINATIONS = [
     {
         "slug": "dhorpatan-region",
         "title": "Dhorpatan Region",
-        "image": "exp-dhorpatan",
+        "image": "dhorpatan-region",
         "subtitle": "Remote valleys, alpine meadows, and western Nepal wilderness.",
         "description": (
             "Dhorpatan offers a quieter side of Nepal, with high pasturelands, traditional settlements, and wide-open trails in the western hills. It suits travellers seeking a less-travelled mountain landscape."
@@ -166,7 +166,7 @@ DESTINATIONS = [
     {
         "slug": "patan",
         "title": "Patan",
-        "image": "exp-patan",
+        "image": "patan",
         "subtitle": "Newari artistry, courtyards, and one of Nepal's finest durbar squares.",
         "description": (
             "Patan is celebrated for its dense concentration of temples, stonework, metal craft, and traditional Newari courtyards. Its compact historic centre makes it ideal for a thoughtful cultural day in the valley."
@@ -179,7 +179,7 @@ DESTINATIONS = [
     {
         "slug": "pokhara",
         "title": "Pokhara",
-        "image": "exp-pokhara",
+        "image": "pokhara",
         "subtitle": "Lakeside calm with the Annapurna range on the horizon.",
         "description": (
             "Pokhara balances Phewa Lake, easy-going cafés, mountain viewpoints, and access to the Annapurna trails. It works equally well as a restorative stop and as the launch point for adventure in western Nepal."
@@ -196,7 +196,7 @@ DESTINATIONS = [
     {
         "slug": "journey-to-fish-lake",
         "title": "Journey to Fish Lake",
-        "image": "seasonal-1",
+        "image": "rara-lake-shore",
         "subtitle": "A quieter escape to remote lakeside landscapes.",
         "description": (
             "This destination represents a slower journey through Nepal's remote lake country, where the reward is open water, birdlife, and time away from busy routes. It is a natural match for travellers who value pace and scenery."
@@ -209,7 +209,7 @@ DESTINATIONS = [
     {
         "slug": "gosaikunda-trail",
         "title": "Gosaikunda Trail",
-        "image": "seasonal-2",
+        "image": "gosaikunda",
         "subtitle": "A sacred alpine lake trek north of Kathmandu.",
         "description": (
             "The Gosaikunda Trail climbs through Langtang National Park to a cluster of high, sacred lakes. The route combines forest, ridges, Tamang culture, and an unforgettable alpine destination."
@@ -226,7 +226,7 @@ DESTINATIONS = [
     {
         "slug": "chitwan-safari",
         "title": "Chitwan Safari",
-        "image": "seasonal-3",
+        "image": "chitwan",
         "subtitle": "Jungle walks and river landscapes in Nepal's southern lowlands.",
         "description": (
             "Chitwan National Park offers a different side of Nepal: sal forest, grassland, rivers, and rich wildlife. Guided nature activities focus on responsible viewing, local Tharu culture, and time outdoors."
@@ -243,7 +243,7 @@ DESTINATIONS = [
     {
         "slug": "mustang-valley",
         "title": "Mustang Valley",
-        "image": "seasonal-4",
+        "image": "mustang",
         "subtitle": "Wind-shaped cliffs, ancient settlements, and trans-Himalayan culture.",
         "description": (
             "Mustang feels distinct from the greener parts of Nepal, with dry valleys, eroded cliffs, walled villages, and Tibetan-influenced culture. The journey is as much about the road and landscape as the destination."
@@ -256,7 +256,7 @@ DESTINATIONS = [
     {
         "slug": "langtang-valley",
         "title": "Langtang Valley",
-        "image": "seasonal-5",
+        "image": "langtang",
         "subtitle": "A close-to-Kathmandu Himalayan valley of forest, peaks, and Tamang culture.",
         "description": (
             "Langtang Valley offers an accessible Himalayan trekking experience with oak and rhododendron forest, yak pastures, glacier views, and warm Tamang hospitality. It is ideal for travellers with limited time."
@@ -295,8 +295,8 @@ PACKAGES = [
         "title": "Annapurna Base Camp Trek",
         "category": "Trekking",
         "destination": "annapurna-region",
-        "image": "dest-annapurna",
-        "gallery": ["pkg-annapurna", "dest-annapurna", "region-annapurna", "package-card3"],
+        "image": "abc-trail",
+        "gallery": ["abc-trail", "abc-sunset", "abc-lodge", "annapurna-trail", "ghandruk"],
         "summary": "A classic teahouse trek through Gurung villages, forest trails, and the Annapurna Sanctuary.",
         "description": (
             "Follow the Modi Khola valley from the foothills into the Annapurna Sanctuary. This seven-day route balances a steady ascent with warm teahouse stays, rhododendron forest, Machhapuchhre views, and a dawn at Annapurna Base Camp (4,130 m)."
@@ -353,8 +353,8 @@ PACKAGES = [
         "title": "Poon Hill Sunrise Trek",
         "category": "Trekking",
         "destination": "poon-hill",
-        "image": "dest-poonhills",
-        "gallery": ["dest-poonhills", "pkg-annapurna", "region-annapurna"],
+        "image": "poon-hill",
+        "gallery": ["poon-hill", "poon-hill-sunrise", "annapurna-region", "teahouse"],
         "summary": "A short, rewarding Annapurna trek built around the sunrise panorama from Poon Hill.",
         "description": (
             "This compact four-day trek passes through Magar and Gurung villages, rhododendron forest, and traditional teahouses before an early climb to Poon Hill. The viewpoint looks across Dhaulagiri, Annapurna South, Hiunchuli, and Machhapuchhre."
@@ -392,8 +392,8 @@ PACKAGES = [
         "title": "Journey to Fish Lake",
         "category": "Hiking",
         "destination": "rara-lake",
-        "image": "package-card1",
-        "gallery": ["package-card1", "region-rara-lake", "seasonal-1"],
+        "image": "rara-lake",
+        "gallery": ["rara-lake", "rara-lake-shore"],
         "summary": "A relaxed highland escape to Rara Lake, Nepal's largest alpine lake.",
         "description": (
             "Travel from Nepalgunj into the far-west hills for quiet trails, lakeside viewpoints, and time around the deep-blue waters of Rara Lake. This is a slower journey for travelers who want scenery, birdlife, and space away from busy trekking routes."
@@ -424,8 +424,8 @@ PACKAGES = [
         "title": "Pokhara & Kathmandu Tours",
         "category": "Sightseeing",
         "destination": "kathmandu-pokhara",
-        "image": "package-card2",
-        "gallery": ["package-card2", "cultural-1", "exp-pokhara", "pkg-pokhara", "cultural-2", "region-kathmandu"],
+        "image": "sarangkot",
+        "gallery": ["sarangkot", "kathmandu-square", "boudhanath", "swayambhunath", "patan", "pokhara"],
         "summary": "A culture-and-landscape journey linking Kathmandu's heritage with Pokhara's lakeside calm.",
         "description": (
             "Spend time in Kathmandu's historic squares and living temples, then continue to Pokhara for Phewa Lake, mountain views, and a gentler pace. It is designed for first-time Nepal visitors who want cultural depth without a high-altitude trek."
@@ -456,8 +456,8 @@ PACKAGES = [
         "title": "ABC Base Camp Trek",
         "category": "Trekking",
         "destination": "annapurna-region",
-        "image": "package-card3",
-        "gallery": ["package-card3", "pkg-annapurna", "dest-annapurna", "region-annapurna"],
+        "image": "abc-sunset",
+        "gallery": ["abc-sunset", "abc-lodge", "machhapuchhre-sunrise", "trail-machhapuchhre", "annapurna-trail"],
         "summary": "An Annapurna Sanctuary trek with extra time for acclimatization and village life.",
         "description": (
             "A fuller Annapurna Base Camp itinerary for travelers who want measured walking days and time to enjoy the changing landscape from foothill villages to the high sanctuary. The route uses trusted local teahouses and a licensed mountain guide."
