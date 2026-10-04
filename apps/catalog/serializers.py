@@ -1,6 +1,7 @@
 """Dict serializers for catalog snippets, shared by blocks and REST endpoints."""
 
 from rest_framework import serializers
+from wagtail.rich_text import expand_db_html
 
 from apps.core.serializers import serialize_image
 
@@ -98,7 +99,7 @@ def serialize_package(package, detail=False):
     if detail:
         data.update(
             {
-                "description": package.description,
+                "description": expand_db_html(package.description or ""),
                 "max_altitude": package.max_altitude,
                 "destination": serialize_destination(package.destination),
                 "highlights": [

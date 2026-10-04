@@ -32,6 +32,8 @@ def verify_google_credential(credential):
             credential,
             Request(),
             audience=client_id,
+            # Tolerate small server/Google clock drift ("Token used too early").
+            clock_skew_in_seconds=10,
         )
     except (GoogleAuthError, ValueError) as exc:
         raise GoogleCredentialError("Invalid or expired Google credential.") from exc

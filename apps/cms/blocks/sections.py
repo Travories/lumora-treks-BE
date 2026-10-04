@@ -12,6 +12,8 @@ on every block and the frontend's block registry maps it to the component.
     ...
 """
 
+import re
+
 from wagtail import blocks
 from wagtail.snippets.blocks import SnippetChooserBlock
 
@@ -639,6 +641,16 @@ class PackageBookingBlock(SectionBlock):
         icon = "calendar"
         label = "Inclusions & booking"
         group = "Actions & forms"
+
+    def get_api_representation(self, value, context=None):
+        data = super().get_api_representation(value, context)
+        # Auto-created pages store `/enquiry?package=<slug>`, which goes stale
+        # when the package's slug is edited. The frontend builds that same
+        # link from the current slug when this is blank, so only emit a
+        # custom destination.
+        if isinstance(data, dict) and re.fullmatch(r"/enquiry\?package=[^&#]*", data.get("reserve_href") or ""):
+            data["reserve_href"] = ""
+        return data
 
 
 class PackageItineraryBlock(SectionBlock):

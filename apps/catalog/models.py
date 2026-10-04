@@ -12,7 +12,7 @@ import string
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
 from modelcluster.fields import ParentalKey
@@ -427,7 +427,9 @@ class Testimonial(index.Indexed, models.Model):
     avatar = models.ForeignKey(
         "core.CustomImage", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    rating = models.PositiveSmallIntegerField(default=5)
+    rating = models.PositiveSmallIntegerField(
+        default=5, validators=[MinValueValidator(1), MaxValueValidator(5)], help_text="1–5 stars."
+    )
     package = models.ForeignKey(
         "catalog.Package", null=True, blank=True, on_delete=models.SET_NULL, related_name="testimonials"
     )

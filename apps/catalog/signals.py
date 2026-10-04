@@ -14,10 +14,10 @@ page. `seed_database` uses the same function for seeded packages.
 import logging
 
 from django.db import transaction
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from apps.catalog.models import Package
+from apps.catalog.models import Destination, Package, Testimonial
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,11 @@ def ensure_detail_page(package):
     # models at module load time would create a circular import.
     from apps.cms.models import PackageDetailPage, PackageFolderPage, PackageIndexPage
 
-    # Already has a linked detail page — nothing to do (idempotent on re-save).
-    if PackageDetailPage.objects.filter(package=package).exists():
+    # Already has a linked detail page — keep its URL and title in step with
+    # the package (idempotent on re-save).
+    detail = PackageDetailPage.objects.filter(package=package).first()
+    if detail is not None:
+        sync_detail_page(package, detail)
         return
 
     index = PackageIndexPage.objects.filter(slug="packages").first()
@@ -110,6 +113,104 @@ def ensure_detail_page(package):
     detail.save_revision().publish()
 
 
+def sync_detail_page(package, detail):
+    """Follow slug / title edits so `package.public_url` keeps resolving.
+
+    The folder page's slug is the `/packages/<slug>/` URL segment; Wagtail
+    rewrites the detail page's url_path when the folder's slug changes. Titles
+    are updated in place (no new revision) so an editor's unpublished draft of
+    the page's sections is left alone.
+    """
+
+    from apps.cms.models import PackageFolderPage
+
+    folder = detail.get_parent().specific
+    if isinstance(folder, PackageFolderPage) and (
+        folder.slug != package.slug or folder.title != package.title
+    ):
+        if folder.slug != package.slug and folder.get_siblings(inclusive=False).filter(slug=package.slug).exists():
+            logger.warning(
+                "Cannot move package %r to /packages/%s/: another page already uses that slug.",
+                package.pk,
+                package.slug,
+            )
+        else:
+            folder.slug = package.slug
+            folder.title = folder.draft_title = package.title
+            folder.save()
+
+    if detail.title != package.title:
+        type(detail).objects.filter(pk=detail.pk).update(title=package.title, draft_title=package.title)
+
+
+def ensure_destination_page(destination):
+    """Create and publish a destination's public page if it doesn't exist yet."""
+
+    from apps.cms.models import DestinationDetailPage, DestinationIndexPage
+
+    page = DestinationDetailPage.objects.filter(destination=destination).first()
+    if page is not None:
+        if page.slug != destination.slug and not page.get_siblings(inclusive=False).filter(slug=destination.slug).exists():
+            page.slug = destination.slug
+            page.save()
+        if page.title != destination.title:
+            DestinationDetailPage.objects.filter(pk=page.pk).update(
+                title=destination.title, draft_title=destination.title
+            )
+        return
+
+    index = DestinationIndexPage.objects.filter(slug="destinations").first()
+    if index is None:
+        logger.warning(
+            "No DestinationIndexPage (slug='destinations') found; skipping auto-creation "
+            "of the page for destination %r.",
+            destination.slug,
+        )
+        return
+    if index.get_children().filter(slug=destination.slug).exists():
+        return
+
+    page = DestinationDetailPage(
+        title=destination.title,
+        slug=destination.slug,
+        destination=destination,
+        body=[
+            {
+                "type": "destination_header",
+                "value": {"settings": _default_block_settings("destination-header")},
+            },
+            {
+                "type": "destination_overview",
+                "value": {"settings": _default_block_settings("destination-overview")},
+            },
+            {
+                "type": "destination_packages",
+                "value": {"settings": _default_block_settings("destination-packages")},
+            },
+        ],
+    )
+    index.add_child(instance=page)
+    page.save_revision().publish()
+
+
+def _ensure_destination_page_safe(destination):
+    try:
+        ensure_destination_page(destination)
+    except Exception:  # pragma: no cover — defensive: log, don't propagate
+        logger.exception(
+            "Failed to auto-create the page for destination %r; the destination "
+            "was saved. Create/repair its page in Wagtail if needed.",
+            getattr(destination, "slug", destination.pk),
+        )
+
+
+@receiver(post_save, sender=Destination, dispatch_uid="catalog_destination_autocreate_page")
+def create_destination_page(sender, instance, created, **kwargs):
+    if kwargs.get("raw"):
+        return
+    transaction.on_commit(lambda: _ensure_destination_page_safe(instance))
+
+
 def _ensure_detail_page_safe(package):
     """Never let auto-creation of the public page break a Package save."""
     try:
@@ -133,3 +234,34 @@ def create_package_detail_page(sender, instance, created, **kwargs):
     # (and its generated public_code) is persisted, and avoids orphan pages if
     # the save is rolled back.
     transaction.on_commit(lambda: _ensure_detail_page_safe(instance))
+
+
+# --------------------------------------------------------------- testimonials
+# Testimonials count towards a package's rating and review count (see
+# apps/catalog/ratings.py), so keep the stored aggregate current when editors
+# add, edit, move or delete one.
+
+
+@receiver(pre_save, sender=Testimonial, dispatch_uid="catalog_testimonial_remember_package")
+def remember_testimonial_package(sender, instance, **kwargs):
+    instance._previous_package_id = (
+        Testimonial.objects.filter(pk=instance.pk).values_list("package_id", flat=True).first()
+        if instance.pk
+        else None
+    )
+
+
+def _recalculate_ratings(package_ids):
+    from apps.catalog.ratings import recalculate_package_rating
+
+    for package in Package.objects.filter(pk__in=[pk for pk in package_ids if pk]):
+        recalculate_package_rating(package)
+
+
+@receiver(post_save, sender=Testimonial, dispatch_uid="catalog_testimonial_update_rating")
+@receiver(post_delete, sender=Testimonial, dispatch_uid="catalog_testimonial_delete_rating")
+def update_testimonial_package_rating(sender, instance, **kwargs):
+    if kwargs.get("raw"):
+        return
+    package_ids = {instance.package_id, getattr(instance, "_previous_package_id", None)}
+    transaction.on_commit(lambda: _recalculate_ratings(package_ids))

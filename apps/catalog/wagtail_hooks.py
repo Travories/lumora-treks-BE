@@ -89,6 +89,34 @@ register_snippet(DestinationViewSet)
 register_snippet(TestimonialViewSet)
 
 
+@hooks.register("before_delete_snippet")
+def delete_catalog_public_pages(request, instances):
+    """Remove a package's / destination's auto-created page along with it.
+
+    The page links back through a protected one-to-one key, so deleting the
+    snippet alone raises ProtectedError (a 500). Wagtail's usage check doesn't
+    see one-to-one keys, so it never warns the editor first.
+    """
+
+    if request.method != "POST":
+        return None
+
+    from apps.cms.models import PackageFolderPage
+
+    for obj in instances:
+        if not isinstance(obj, (Package, Destination)):
+            continue
+        page = detail_page_for(obj)
+        if page is None:
+            continue
+        parent = page.get_parent().specific
+        if isinstance(parent, PackageFolderPage) and parent.get_children().count() == 1:
+            # The folder exists only to give this page its URL segment.
+            page = parent
+        page.delete(user=request.user)
+    return None
+
+
 @hooks.register("register_snippet_listing_buttons")
 def catalog_page_listing_buttons(snippet, user, next_url=None):
     """Row "More" actions on Packages / Destinations to jump to the public page."""

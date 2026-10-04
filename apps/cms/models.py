@@ -438,6 +438,8 @@ class BlogIndexPage(BasePage):
 
     api_fields = BasePage.api_fields + [APIField("intro")]
     subpage_types = ["cms.BlogPostPage"]
+    # Blog post slugs are only unique per parent; the API looks posts up by slug.
+    max_count = 1
     edit_handler = page_edit_handler(
         Page.content_panels + [FieldPanel("intro")],
         [FieldPanel("body", heading="Screen sections — top to bottom")],

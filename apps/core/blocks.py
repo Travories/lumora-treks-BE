@@ -7,6 +7,8 @@ a decoupled frontend. Every chooser here is subclassed to emit a full object
 frontend everything it needs to render.
 """
 
+import re
+
 from django.core.validators import URLValidator
 from wagtail import blocks
 from wagtail.documents.blocks import DocumentChooserBlock
@@ -18,6 +20,7 @@ from wagtail.rich_text import expand_db_html
 from wagtail.snippets.blocks import SnippetChooserBlock
 
 from apps.core.serializers import (
+    absolute_url,
     serialize_document,
     serialize_image,
     serialize_page_ref,
@@ -78,10 +81,16 @@ class APIRichTextBlock(blocks.RichTextBlock):
         kwargs.setdefault("features", RICH_TEXT_FEATURES)
         super().__init__(**kwargs)
 
+    # Inline images and document links expand to backend-relative paths
+    # (/media/…, /api/v2/media/…, /documents/…) that would resolve against the
+    # frontend's host.
+    BACKEND_PATH_ATTR = re.compile(r'\b(src|href)="(/(?:media|api/v2/media|documents)/[^"]*)"')
+
     def get_api_representation(self, value, context=None):
         if not value:
             return ""
-        return expand_db_html(value.source)
+        html = expand_db_html(value.source)
+        return self.BACKEND_PATH_ATTR.sub(lambda m: f'{m[1]}="{absolute_url(m[2])}"', html)
 
 
 class APIEmbedBlock(EmbedBlock):

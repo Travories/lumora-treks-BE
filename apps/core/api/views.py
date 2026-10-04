@@ -219,7 +219,7 @@ class BlogPostViewSet(DictModelViewSet):
 
 class TestimonialViewSet(DictModelViewSet):
     queryset = Testimonial.objects.all().select_related("avatar")
-    lookup_field = "pk"
+    lookup_value_regex = r"\d+"
 
     @staticmethod
     def serialize(obj, detail=False):
@@ -351,6 +351,7 @@ class PackageReviewView(APIView):
 
 class VideoViewSet(DictModelViewSet):
     queryset = Video.objects.all().select_related("poster")
+    lookup_value_regex = r"\d+"
 
     @staticmethod
     def serialize(obj, detail=False):
@@ -461,6 +462,9 @@ class LeadCreateView(APIView):
     """POST a form submission. Used by the lead_form block and the newsletter."""
 
     permission_classes = [AllowAny]
+    # Anonymous form: a stale "Authorization: Token …" must not turn a submit
+    # into a 401.
+    authentication_classes = []
     throttle_scope = "leads"
 
     KNOWN_FIELDS = {"name", "email", "phone", "message"}
@@ -487,7 +491,8 @@ class LeadCreateView(APIView):
         if started_at:
             try:
                 elapsed = timezone.now().timestamp() - float(started_at)
-                if elapsed < 1.5:
+                # Negative = client clock ahead of ours; not a bot signal.
+                if 0 <= elapsed < 1.5:
                     return Response({"ok": True}, status=status.HTTP_201_CREATED)
             except (TypeError, ValueError):
                 pass
@@ -536,8 +541,8 @@ class LeadCreateView(APIView):
             consent_given=True,
             consent_at=timezone.now(),
         )
-        if payload.get("page_id"):
-            lead.page = Page.objects.filter(pk=payload["page_id"]).first()
+        if str(payload.get("page_id") or "").isdigit():
+            lead.page = Page.objects.filter(pk=int(payload["page_id"])).first()
         package_ref = payload.get("package_id") or payload.get("package_slug")
         if package_ref:
             package_ref = str(package_ref)
@@ -601,6 +606,10 @@ def page_by_path(request):
     page = route_result.page
     if not page.live:
         return JsonResponse({"detail": "Page is not published."}, status=404)
+    # A deactivated package is hidden from the catalog API; hide its page too.
+    package = getattr(page.specific, "package", None)
+    if package is not None and not getattr(package, "is_active", True):
+        return JsonResponse({"detail": "No page found for this path."}, status=404)
 
     request.wagtailapi_router = api_router
     view = LumoraPagesAPIViewSet.as_view({"get": "detail_view"})

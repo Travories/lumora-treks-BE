@@ -10,10 +10,17 @@ from rest_framework.test import APITestCase
 from wagtail.models import Page
 
 from apps.accounts.models import TravelerProfile
-from apps.catalog.models import Package, PackageGroupPrice, TravelerReview
+from apps.catalog.models import Destination, Package, PackageGroupPrice, Testimonial, TravelerReview
 from apps.catalog.serializers import serialize_package
 from apps.catalog.pricing import default_group_prices
-from apps.cms.models import HomePage, PackageDetailPage, PackageFolderPage, PackageIndexPage
+from apps.cms.models import (
+    DestinationDetailPage,
+    DestinationIndexPage,
+    HomePage,
+    PackageDetailPage,
+    PackageFolderPage,
+    PackageIndexPage,
+)
 
 
 class PackageReviewApiTests(APITestCase):
@@ -248,3 +255,84 @@ class PackageDetailPageAutoCreateTests(TestCase):
             package.save()
 
         self.assertTrue(PackageDetailPage.objects.filter(package=package).exists())
+
+    def test_slug_and_title_edits_move_the_public_page(self):
+        index = self._build_packages_index()
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Poon Hill", price=400)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            package.slug = "poon-hill-sunrise"
+            package.title = "Poon Hill Sunrise"
+            package.save()
+
+        detail = PackageDetailPage.objects.get(package=package)
+        self.assertEqual(detail.title, "Poon Hill Sunrise")
+        self.assertEqual(detail.get_parent().slug, "poon-hill-sunrise")
+        self.assertEqual(detail.url_path, f"{index.url_path}poon-hill-sunrise/{package.public_code}/")
+
+    def test_booking_block_omits_slug_based_default_href(self):
+        self._build_packages_index()
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Mardi Himal", price=700)
+
+        detail = PackageDetailPage.objects.get(package=package)
+        booking = detail.body[2]
+        self.assertEqual(booking.block.get_api_representation(booking.value)["reserve_href"], "")
+
+
+class CatalogAdminDeleteTests(TestCase):
+    def setUp(self):
+        root = Page.get_first_root_node()
+        home = HomePage(title="Home", slug="home-test")
+        root.add_child(instance=home)
+        home.add_child(instance=PackageIndexPage(title="Packages", slug="packages"))
+        home.add_child(instance=DestinationIndexPage(title="Destinations", slug="destinations"))
+        self.user = get_user_model().objects.create_superuser("admin", "admin@example.com", "pw")
+        self.client.force_login(self.user)
+
+    def test_deleting_a_package_removes_its_page_instead_of_500(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            package = Package.objects.create(title="Langtang Valley", price=500)
+        self.assertTrue(PackageDetailPage.objects.filter(package=package).exists())
+
+        response = self.client.post(reverse("wagtailsnippets_catalog_package:delete", args=[package.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Package.objects.filter(pk=package.pk).exists())
+        self.assertFalse(PackageFolderPage.objects.filter(slug="langtang-valley").exists())
+
+    def test_new_destination_gets_a_live_page_that_can_be_deleted(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            destination = Destination.objects.create(title="Rara Lake")
+        page = DestinationDetailPage.objects.get(destination=destination)
+        self.assertTrue(page.live)
+        self.assertEqual(page.slug, destination.slug)
+        self.assertEqual(
+            [block.block_type for block in page.body],
+            ["destination_header", "destination_overview", "destination_packages"],
+        )
+
+        response = self.client.post(reverse("wagtailsnippets_catalog_destination:delete", args=[destination.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(DestinationDetailPage.objects.filter(pk=page.pk).exists())
+
+
+class TestimonialRatingTests(TestCase):
+    def test_testimonials_update_package_rating(self):
+        package = Package.objects.create(title="Everest View", price=900)
+        with self.captureOnCommitCallbacks(execute=True):
+            testimonial = Testimonial.objects.create(package=package, author_name="A", quote="Great", rating=5)
+            Testimonial.objects.create(package=package, author_name="B", quote="Okay", rating=3)
+        package.refresh_from_db()
+        self.assertEqual((float(package.rating), package.review_count), (4.0, 2))
+
+        with self.captureOnCommitCallbacks(execute=True):
+            testimonial.delete()
+        package.refresh_from_db()
+        self.assertEqual((float(package.rating), package.review_count), (3.0, 1))
+
+    def test_rating_must_be_one_to_five(self):
+        with self.assertRaises(ValidationError):
+            Testimonial(author_name="A", quote="Great", rating=9).full_clean()

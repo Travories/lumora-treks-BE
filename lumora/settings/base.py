@@ -185,6 +185,10 @@ if ENABLE_REDIS and REDIS_URL:
                 # CMS page delivery must remain available when Redis is
                 # temporarily unavailable; Django falls back to a cache miss.
                 "IGNORE_EXCEPTIONS": True,
+                # Fail fast (cache miss) instead of hanging a worker when the
+                # Redis host is unreachable.
+                "SOCKET_CONNECT_TIMEOUT": 2,
+                "SOCKET_TIMEOUT": 2,
             },
             "KEY_PREFIX": "lumora",
         }
@@ -271,7 +275,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"auth": "60/hour", "leads": "20/hour"},
+    "DEFAULT_THROTTLE_RATES": {"auth": "60/hour", "leads": "100/hour"},
     "UNAUTHENTICATED_USER": None,
 }
 
