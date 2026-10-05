@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.db import IntegrityError, transaction
-from django.db.models import Case, IntegerField, Prefetch, Value, When
+from django.db.models import Case, IntegerField, Prefetch, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_safe
@@ -58,6 +58,18 @@ from apps.navigation.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def search_filter(queryset, term, fields):
+    """Every word of `term` must appear in at least one of `fields`
+    (case-insensitive), so "annapurna base camp" or "pokhara trek" match across
+    title, summary and destination rather than needing an exact title phrase."""
+    for word in (term or "").split():
+        match = Q()
+        for field in fields:
+            match |= Q(**{f"{field}__icontains": word})
+        queryset = queryset.filter(match)
+    return queryset
 
 
 class DictModelViewSet(viewsets.ViewSet):
@@ -135,7 +147,11 @@ class PackageViewSet(DictModelViewSet):
         if params.get("difficulty"):
             queryset = queryset.filter(difficulty=params["difficulty"])
         if params.get("search"):
-            queryset = queryset.filter(title__icontains=params["search"])
+            queryset = search_filter(
+                queryset,
+                params["search"],
+                ["title", "summary", "category", "destination__title", "destination__region"],
+            )
         if params.get("max_price"):
             try:
                 queryset = queryset.filter(price__lte=float(params["max_price"]))
@@ -176,6 +192,8 @@ class DestinationViewSet(DictModelViewSet):
             queryset = queryset.filter(is_featured=True)
         if params.get("region"):
             queryset = queryset.filter(region__iexact=params["region"])
+        if params.get("search"):
+            queryset = search_filter(queryset, params["search"], ["title", "subtitle", "region"])
         return queryset
 
 
@@ -205,7 +223,7 @@ class BlogPostViewSet(DictModelViewSet):
         if category and category != "All":
             queryset = queryset.filter(category=category)
         if params.get("search"):
-            queryset = queryset.filter(title__icontains=params["search"])
+            queryset = search_filter(queryset, params["search"], ["title", "excerpt", "category"])
         if params.get("exclude"):
             queryset = queryset.exclude(slug=params["exclude"])
         return queryset
